@@ -112,8 +112,11 @@ export default function ResultPage() {
               {(result.monthsToFIRE ?? 0) % 12 > 0 ? `${(result.monthsToFIRE ?? 0) % 12}ヶ月` : ''}）
             </div>
           </div>
+          <p className="text-xs text-emerald-600 mt-2">
+            資産残高が目標額（{formatMan(result.requiredAssets)}）に到達する時期
+          </p>
           {result.loanPayoffMonth !== null && (
-            <div className="mt-2 text-xs text-emerald-600">
+            <div className="mt-1 text-xs text-emerald-600">
               住宅ローン完済：{data.currentAge! + Math.floor(result.loanPayoffMonth / 12)}歳（{Math.floor(result.loanPayoffMonth / 12)}年後）
             </div>
           )}
@@ -136,7 +139,10 @@ export default function ResultPage() {
       {/* モンテカルロ成功率 */}
       {canFIRE && monte !== null && (
         <div className="bg-white rounded-2xl border border-gray-200 p-5">
-          <div className="text-sm font-medium text-gray-500 mb-3">FIRE継続成功率（モンテカルロ1,000回）</div>
+          <div className="text-sm font-medium text-gray-500 mb-1">その後30年間、資産は持つか？</div>
+          <p className="text-xs text-gray-400 mb-3">
+            {result.fireAge}歳でFIREし、{(result.fireAge ?? 0) + 30}歳まで月{data.fireMonthlyExpenses ? Math.round(data.fireMonthlyExpenses / 10000) : 0}万円を取り崩した場合の資産継続確率（1,000パターンでシミュレーション）
+          </p>
           <div className="flex items-center gap-6">
             <div className="relative">
               <ProgressRing rate={successRate ?? 0} />
@@ -151,7 +157,7 @@ export default function ResultPage() {
                     '資産枯渇リスクが高めです'}
               </div>
               <p className="text-gray-400 text-xs">
-                FIRE達成後30年間、資産が枯渇しないシナリオの割合（利回りにランダムな変動を加えた1,000パターンでシミュレーション）
+                1,000回中{Math.round((successRate ?? 0) * 10)}回は{(result.fireAge ?? 0) + 30}歳時点で資産が残るシナリオ
               </p>
             </div>
           </div>
