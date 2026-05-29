@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSimulator } from '@/contexts/SimulatorContext'
 import { runSimulation, runMonteCarlo } from '@/lib/simulation'
@@ -14,6 +14,148 @@ function formatMan(yen: number): string {
     return remainder > 0 ? `${oku}億${remainder.toLocaleString()}万円` : `${oku}億円`
   }
   return `${man.toLocaleString()}万円`
+}
+
+function MonteCarloChart({
+  fireAge, requiredAssets, fireMonthlyExpenses, monte,
+}: {
+  fireAge: number
+  requiredAssets: number
+  fireMonthlyExpenses: number
+  monte: MonteCarloResult
+}) {
+  const svgRef = useRef<SVGSVGElement>(null)
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null)
+
+  const W = 500; const H = 180
+  const PL = 8; const PR = 8; const PT = 22; const PB = 24
+  const cW = W - PL - PR; const cH = H - PT - PB
+  const SAMPLE = 2
+  const medianS = monte.median.filter((_, i) => i % SAMPLE === 0)
+  const upper25S = monte.upper25.filter((_, i) => i % SAMPLE === 0)
+  const lower25S = monte.lower25.filter((_, i) => i % SAMPLE === 0)
+  const totalM = monte.median.length
+  const maxA = Math.max(...monte.upper25, requiredAssets) * 1.05
+
+  const xOf = (i: number) => PL + ((i * SAMPLE) / totalM) * cW
+  const yOf = (v: number) => PT + cH - Math.min(Math.max(v, 0) / maxA, 1) * cH
+  const zeroY = yOf(0)
+  const startY = yOf(requiredAssets)
+
+  const upperPts = upper25S.map((v, i) => `${xOf(i)},${yOf(v)}`)
+  const lowerPts = lower25S.map((v, i) => `${xOf(i)},${yOf(v)}`)
+  const bandPath = upperPts.length > 0
+    ? `M ${upperPts.join(' L ')} L ${[...lowerPts].reverse().join(' L ')} Z`
+    : ''
+  const medianPts = medianS.map((v, i) => `${xOf(i)},${yOf(v)}`).join(' ')
+
+  const labelAges: number[] = []
+  for (let age = Math.ceil(fireAge / 5) * 5; age <= fireAge + 30; age += 5) {
+    labelAges.push(age)
+  }
+
+  const handlePointer = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (!svgRef.current) return
+    const rect = svgRef.current.getBoundingClientRect()
+    const svgX = ((e.clientX - rect.left) / rect.width) * W
+    const ratio = (svgX - PL) / cW
+    const idx = Math.max(0, Math.min(Math.round(ratio * (medianS.length - 1)), medianS.length - 1))
+    setHoverIdx(idx)
+  }
+
+  const hoverX = hoverIdx !== null ? xOf(hoverIdx) : null
+  const hoverAge = hoverIdx !== null ? fireAge + Math.round((hoverIdx * SAMPLE) / 12) : null
+  const hoverMedian = hoverIdx !== null ? medianS[hoverIdx] : null
+  const hoverUpper = hoverIdx !== null ? upper25S[hoverIdx] : null
+  const hoverLower = hoverIdx !== null ? lower25S[hoverIdx] : null
+  // ツールチップをグラフの右半分では左側に表示
+  const tooltipOnLeft = hoverIdx !== null && hoverIdx > medianS.length * 0.55
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 p-5">
+      <div className="font-medium text-gray-800 mb-0.5">FIRE後の資産シミュレーション</div>
+      <p className="text-xs text-gray-400 mb-3">
+        {fireAge}歳・{formatMan(requiredAssets)}からスタートして月{Math.round(fireMonthlyExpenses / 10000)}万円を取り崩した場合の30年間の推移（1,000通りのシナリオ）
+      </p>
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${W} ${H}`}
+        className="w-full touch-none cursor-crosshair"
+        onPointerMove={handlePointer}
+        onPointerLeave={() => setHoverIdx(null)}
+      >
+        {/* 開始点ラベル */}
+        <text x={PL + 3} y={startY - 5} fontSize="9" fill="#6b7280">
+          開始: {formatMan(requiredAssets)}
+        </text>
+        {/* 資産ゼロライン */}
+        <line x1={PL} y1={zeroY} x2={W - PR} y2={zeroY}
+          stroke="#ef4444" strokeWidth="1.5" opacity="0.7" />
+        <text x={PL + 3} y={zeroY - 4} fontSize="9" fill="#ef4444">
+          資産ゼロ（枯渇）
+        </text>
+        {/* バンド */}
+        {bandPath && <path d={bandPath} fill="#fbbf24" fillOpacity="0.3" />}
+        {/* 上下25%点線 */}
+        <polyline points={upperPts.join(' ')} fill="none"
+          stroke="#f59e0b" strokeWidth="1" strokeDasharray="3,3" opacity="0.8" />
+        <polyline points={lowerPts.join(' ')} fill="none"
+          stroke="#f59e0b" strokeWidth="1" strokeDasharray="3,3" opacity="0.8" />
+        {/* 中央値 */}
+        <polyline points={medianPts} fill="none" stroke="#f59e0b" strokeWidth="2.5" />
+        {/* 横軸 */}
+        {labelAges.map(age => (
+          <text key={age} x={xOf((age - fireAge) * 12 / SAMPLE)} y={H - 5}
+            fontSize="9" fill="#9ca3af" textAnchor="middle">{age}歳</text>
+        ))}
+        {/* ホバー：縦線 + ドット */}
+        {hoverX !== null && hoverIdx !== null && (
+          <>
+            <line x1={hoverX} y1={PT} x2={hoverX} y2={PT + cH}
+              stroke="#6b7280" strokeWidth="1" strokeDasharray="3,2" opacity="0.6" />
+            {hoverMedian !== null && (
+              <circle cx={hoverX} cy={yOf(hoverMedian)} r="4" fill="#f59e0b" />
+            )}
+            {hoverUpper !== null && (
+              <circle cx={hoverX} cy={yOf(hoverUpper)} r="3" fill="#f59e0b" opacity="0.6" />
+            )}
+            {hoverLower !== null && (
+              <circle cx={hoverX} cy={yOf(hoverLower)} r="3" fill="#f59e0b" opacity="0.6" />
+            )}
+            {/* ツールチップ */}
+            <g transform={`translate(${tooltipOnLeft ? hoverX - 118 : hoverX + 8}, ${PT + 4})`}>
+              <rect x="0" y="0" width="110" height="64" rx="6"
+                fill="white" stroke="#e5e7eb" strokeWidth="1"
+                style={{ filter: 'drop-shadow(0 1px 4px rgba(0,0,0,0.12))' }} />
+              <text x="8" y="15" fontSize="9" fill="#6b7280" fontWeight="bold">
+                {hoverAge}歳時点
+              </text>
+              <text x="8" y="30" fontSize="9" fill="#f59e0b">
+                上位25%: {hoverUpper !== null ? formatMan(hoverUpper) : '-'}
+              </text>
+              <text x="8" y="43" fontSize="9" fill="#d97706" fontWeight="bold">
+                中央値:  {hoverMedian !== null ? formatMan(hoverMedian) : '-'}
+              </text>
+              <text x="8" y="56" fontSize="9" fill="#f59e0b">
+                下位25%: {hoverLower !== null ? formatMan(hoverLower) : '-'}
+              </text>
+            </g>
+          </>
+        )}
+      </svg>
+      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-gray-400">
+        <span className="flex items-center gap-1">
+          <svg width="16" height="8"><line x1="0" y1="4" x2="16" y2="4" stroke="#f59e0b" strokeWidth="2.5"/></svg>
+          中央値（1,000回の真ん中）
+        </span>
+        <span className="flex items-center gap-1">
+          <svg width="16" height="8"><rect x="0" y="1" width="16" height="6" fill="#fbbf24" fillOpacity="0.4"/></svg>
+          シナリオのばらつき幅
+        </span>
+        <span className="text-gray-300">グラフをタップ/ホバーで値を確認</span>
+      </div>
+    </div>
+  )
 }
 
 function ProgressRing({ rate }: { rate: number }) {
@@ -165,82 +307,14 @@ export default function ResultPage() {
       )}
 
       {/* グラフ: FIRE後の資産シミュレーション */}
-      {canFIRE && monte !== null && (() => {
-        const fireAge = result.fireAge!
-        const SAMPLE = 2
-        const medianS = monte.median.filter((_, i) => i % SAMPLE === 0)
-        const upper25S = monte.upper25.filter((_, i) => i % SAMPLE === 0)
-        const lower25S = monte.lower25.filter((_, i) => i % SAMPLE === 0)
-        const W = 500; const H = 170
-        const PL = 8; const PR = 8; const PT = 20; const PB = 24
-        const cW = W - PL - PR; const cH = H - PT - PB
-        const totalM = monte.median.length
-        const maxA = Math.max(...monte.upper25, result.requiredAssets) * 1.05
-        const xOf = (i: number) => PL + ((i * SAMPLE) / totalM) * cW
-        const yOf = (v: number) => PT + cH - Math.min(Math.max(v, 0) / maxA, 1) * cH
-        const zeroY = yOf(0)
-        const startY = yOf(result.requiredAssets)
-        const upperPts = upper25S.map((v, i) => `${xOf(i)},${yOf(v)}`)
-        const lowerPts = lower25S.map((v, i) => `${xOf(i)},${yOf(v)}`)
-        const bandPath = upperPts.length > 0
-          ? `M ${upperPts.join(' L ')} L ${[...lowerPts].reverse().join(' L ')} Z`
-          : ''
-        const medianPts = medianS.map((v, i) => `${xOf(i)},${yOf(v)}`).join(' ')
-        const labelAges: number[] = []
-        for (let age = Math.ceil(fireAge / 5) * 5; age <= fireAge + 30; age += 5) {
-          labelAges.push(age)
-        }
-        return (
-          <div className="bg-white rounded-2xl border border-gray-200 p-5">
-            <div className="font-medium text-gray-800 mb-0.5">FIRE後の資産シミュレーション</div>
-            <p className="text-xs text-gray-400 mb-3">
-              {fireAge}歳・{formatMan(result.requiredAssets)}からスタートして月{data.fireMonthlyExpenses ? Math.round(data.fireMonthlyExpenses / 10000) : 0}万円を取り崩した場合の30年間の推移（1,000通りのシナリオ）
-            </p>
-            <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
-              {/* 開始点ラベル */}
-              <text x={PL + 3} y={startY - 5} fontSize="9" fill="#6b7280">
-                開始: {formatMan(result.requiredAssets)}
-              </text>
-              {/* 資産ゼロライン */}
-              <line x1={PL} y1={zeroY} x2={W - PR} y2={zeroY}
-                stroke="#ef4444" strokeWidth="1.5" opacity="0.7" />
-              <text x={PL + 3} y={zeroY - 4} fontSize="9" fill="#ef4444">
-                資産ゼロ（枯渇）
-              </text>
-              {/* バンド */}
-              {bandPath && <path d={bandPath} fill="#fbbf24" fillOpacity="0.3" />}
-              {/* 上下25%点線 */}
-              {upperPts.length > 0 && (
-                <polyline points={upperPts.join(' ')} fill="none"
-                  stroke="#f59e0b" strokeWidth="1" strokeDasharray="3,3" opacity="0.8" />
-              )}
-              {lowerPts.length > 0 && (
-                <polyline points={lowerPts.join(' ')} fill="none"
-                  stroke="#f59e0b" strokeWidth="1" strokeDasharray="3,3" opacity="0.8" />
-              )}
-              {/* 中央値 */}
-              {medianPts && (
-                <polyline points={medianPts} fill="none" stroke="#f59e0b" strokeWidth="2.5" />
-              )}
-              {/* 横軸 */}
-              {labelAges.map(age => (
-                <text key={age} x={xOf((age - fireAge) * 12 / SAMPLE)} y={H - 5}
-                  fontSize="9" fill="#9ca3af" textAnchor="middle">{age}歳</text>
-              ))}
-            </svg>
-            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-gray-400">
-              <span className="flex items-center gap-1">
-                <svg width="16" height="8"><line x1="0" y1="4" x2="16" y2="4" stroke="#f59e0b" strokeWidth="2.5"/></svg>
-                中央値（1,000回の真ん中）
-              </span>
-              <span className="flex items-center gap-1">
-                <svg width="16" height="8"><rect x="0" y="1" width="16" height="6" fill="#fbbf24" fillOpacity="0.4"/></svg>
-                シナリオのばらつき幅
-              </span>
-            </div>
-          </div>
-        )
-      })()}
+      {canFIRE && monte !== null && (
+        <MonteCarloChart
+          fireAge={result.fireAge!}
+          requiredAssets={result.requiredAssets}
+          fireMonthlyExpenses={data.fireMonthlyExpenses ?? 0}
+          monte={monte}
+        />
+      )}
 
       {/* アクション */}
       <div className="space-y-3">
