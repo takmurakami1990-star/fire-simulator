@@ -164,76 +164,22 @@ export default function ResultPage() {
         </div>
       )}
 
-      {/* グラフ1: 貯蓄シミュレーション */}
-      {result.monthlyData.length > 0 && (() => {
-        const currentAge = data.currentAge!
-        const accData = result.monthlyData
-          .filter(d => d.phase === 'accumulation')
-          .filter((_, i) => i % 2 === 0)
-        const fireMonth = result.monthsToFIRE ?? 0
-        const W = 500; const H = 160
-        const PL = 8; const PR = 8; const PT = 16; const PB = 24
-        const cW = W - PL - PR; const cH = H - PT - PB
-        const maxA = result.requiredAssets * 1.05
-        const xOf = (m: number) => PL + (m / fireMonth) * cW
-        const yOf = (v: number) => PT + cH - Math.min(v / maxA, 1) * cH
-        const targetY = yOf(result.requiredAssets)
-        const accPts = accData.map(d => `${xOf(d.month)},${yOf(d.assets)}`).join(' ')
-        const labelAges: number[] = []
-        for (let age = Math.ceil(currentAge / 5) * 5; age <= currentAge + Math.floor(fireMonth / 12); age += 5) {
-          labelAges.push(age)
-        }
-        return (
-          <div className="bg-white rounded-2xl border border-gray-200 p-5">
-            <div className="font-medium text-gray-800 mb-0.5">① いつFIREできる？</div>
-            <p className="text-xs text-gray-400 mb-3">
-              毎月の貯蓄・運用で資産が目標額に到達するまでの推移
-            </p>
-            <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
-              {/* 目標ライン */}
-              <line x1={PL} y1={targetY} x2={W - PR} y2={targetY}
-                stroke="#10b981" strokeWidth="1" strokeDasharray="4,3" opacity="0.6" />
-              <text x={PL + 3} y={targetY - 4} fontSize="9" fill="#10b981">
-                目標 {formatMan(result.requiredAssets)}
-              </text>
-              {/* 資産ライン */}
-              {accPts && (
-                <polyline points={accPts} fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinejoin="round" />
-              )}
-              {/* FIRE達成点 */}
-              {result.fireAge && (
-                <>
-                  <circle cx={xOf(fireMonth)} cy={targetY} r="5" fill="#10b981" />
-                  <text x={xOf(fireMonth)} y={targetY - 10} fontSize="9" fill="#10b981" textAnchor="middle" fontWeight="bold">
-                    {result.fireAge}歳 FIRE達成
-                  </text>
-                </>
-              )}
-              {/* 横軸 */}
-              {labelAges.map(age => (
-                <text key={age} x={xOf((age - currentAge) * 12)} y={H - 5}
-                  fontSize="9" fill="#9ca3af" textAnchor="middle">{age}歳</text>
-              ))}
-            </svg>
-          </div>
-        )
-      })()}
-
-      {/* グラフ2: FIRE後の資産シミュレーション */}
+      {/* グラフ: FIRE後の資産シミュレーション */}
       {canFIRE && monte !== null && (() => {
         const fireAge = result.fireAge!
         const SAMPLE = 2
         const medianS = monte.median.filter((_, i) => i % SAMPLE === 0)
         const upper25S = monte.upper25.filter((_, i) => i % SAMPLE === 0)
         const lower25S = monte.lower25.filter((_, i) => i % SAMPLE === 0)
-        const W = 500; const H = 160
-        const PL = 8; const PR = 8; const PT = 16; const PB = 24
+        const W = 500; const H = 170
+        const PL = 8; const PR = 8; const PT = 20; const PB = 24
         const cW = W - PL - PR; const cH = H - PT - PB
         const totalM = monte.median.length
         const maxA = Math.max(...monte.upper25, result.requiredAssets) * 1.05
         const xOf = (i: number) => PL + ((i * SAMPLE) / totalM) * cW
         const yOf = (v: number) => PT + cH - Math.min(Math.max(v, 0) / maxA, 1) * cH
         const zeroY = yOf(0)
+        const startY = yOf(result.requiredAssets)
         const upperPts = upper25S.map((v, i) => `${xOf(i)},${yOf(v)}`)
         const lowerPts = lower25S.map((v, i) => `${xOf(i)},${yOf(v)}`)
         const bandPath = upperPts.length > 0
@@ -246,11 +192,15 @@ export default function ResultPage() {
         }
         return (
           <div className="bg-white rounded-2xl border border-gray-200 p-5">
-            <div className="font-medium text-gray-800 mb-0.5">② FIRE後、資産は持つ？</div>
+            <div className="font-medium text-gray-800 mb-0.5">FIRE後の資産シミュレーション</div>
             <p className="text-xs text-gray-400 mb-3">
-              {fireAge}歳でFIREした後30年間の資産推移。1,000通りのシナリオのばらつきを表示
+              {fireAge}歳・{formatMan(result.requiredAssets)}からスタートして月{data.fireMonthlyExpenses ? Math.round(data.fireMonthlyExpenses / 10000) : 0}万円を取り崩した場合の30年間の推移（1,000通りのシナリオ）
             </p>
             <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+              {/* 開始点ラベル */}
+              <text x={PL + 3} y={startY - 5} fontSize="9" fill="#6b7280">
+                開始: {formatMan(result.requiredAssets)}
+              </text>
               {/* 資産ゼロライン */}
               <line x1={PL} y1={zeroY} x2={W - PR} y2={zeroY}
                 stroke="#ef4444" strokeWidth="1.5" opacity="0.7" />
