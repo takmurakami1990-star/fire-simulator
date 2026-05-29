@@ -223,6 +223,13 @@ export default function ResultPage() {
               貯蓄期は確定利回りでの試算。FIRE後はモンテカルロ1,000回の中央値・上下25%の範囲を表示
             </p>
             <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+              {/* 資産ゼロライン */}
+              <line x1={PL} y1={PT + cH} x2={W - PR} y2={PT + cH}
+                stroke="#ef4444" strokeWidth="1.5" opacity="0.6" />
+              <text x={PL + 2} y={PT + cH - 3} fontSize="8" fill="#ef4444" opacity="0.8">
+                資産ゼロ（枯渇）
+              </text>
+
               {/* 目標資産ライン */}
               <line x1={PL} y1={targetY} x2={W - PR} y2={targetY}
                 stroke="#10b981" strokeWidth="1" strokeDasharray="4,3" opacity="0.5" />
