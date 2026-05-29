@@ -164,61 +164,136 @@ export default function ResultPage() {
         </div>
       )}
 
-      {/* 資産推移グラフ */}
+      {/* 資産推移グラフ（SVG） */}
       {result.monthlyData.length > 0 && (() => {
         const currentAge = data.currentAge!
-        const BAR_COUNT = 60
-        const interval = Math.max(1, Math.floor(result.monthlyData.length / BAR_COUNT))
-        const sampled = result.monthlyData.filter((_, i) => i % interval === 0)
-        const maxAssets = Math.max(...sampled.map(d => d.assets), result.requiredAssets)
+        const fireMonth = result.monthsToFIRE ?? result.monthlyData.length
+        const monteTotalMonths = monte?.median.length ?? 0
+        const totalMonths = fireMonth + monteTotalMonths
 
-        // 横軸ラベル：5歳刻みで表示
-        const firstAge = currentAge
-        const lastMonth = result.monthlyData[result.monthlyData.length - 1].month
-        const lastAge = currentAge + Math.floor(lastMonth / 12)
+        // サンプリング（描画負荷軽減）
+        const SAMPLE = 2
+        const accData = result.monthlyData
+          .filter(d => d.phase === 'accumulation' && d.month % SAMPLE === 0)
+        const medianSampled = monte?.median.filter((_, i) => i % SAMPLE === 0) ?? []
+        const upper25Sampled = monte?.upper25.filter((_, i) => i % SAMPLE === 0) ?? []
+        const lower25Sampled = monte?.lower25.filter((_, i) => i % SAMPLE === 0) ?? []
+
+        const maxAssets = Math.max(
+          ...accData.map(d => d.assets),
+          ...(monte?.upper25 ?? [0]),
+          result.requiredAssets
+        )
+
+        // SVGサイズ
+        const W = 500; const H = 180
+        const PL = 8; const PR = 8; const PT = 10; const PB = 24
+        const cW = W - PL - PR; const cH = H - PT - PB
+
+        const xOf = (month: number) => PL + (month / totalMonths) * cW
+        const yOf = (val: number) => PT + cH - Math.min(val / maxAssets, 1) * cH
+
+        // 貯蓄期ポリライン
+        const accPts = accData.map(d => `${xOf(d.month)},${yOf(d.assets)}`).join(' ')
+
+        // モンテカルロバンド（upper25→lower25逆順でエリアを作る）
+        const upperPts = upper25Sampled.map((v, i) => `${xOf(fireMonth + i * SAMPLE)},${yOf(v)}`)
+        const lowerPts = lower25Sampled.map((v, i) => `${xOf(fireMonth + i * SAMPLE)},${yOf(v)}`)
+        const bandPath = upperPts.length > 0
+          ? `M ${upperPts.join(' L ')} L ${[...lowerPts].reverse().join(' L ')} Z`
+          : ''
+
+        const medianPts = medianSampled
+          .map((v, i) => `${xOf(fireMonth + i * SAMPLE)},${yOf(v)}`).join(' ')
+
+        // 横軸ラベル（5歳刻み）
+        const lastAge = currentAge + Math.floor(totalMonths / 12)
         const labelAges: number[] = []
-        const startLabel = Math.ceil(firstAge / 5) * 5
-        for (let age = startLabel; age <= lastAge; age += 5) {
+        for (let age = Math.ceil(currentAge / 5) * 5; age <= lastAge; age += 5) {
           labelAges.push(age)
         }
 
+        // y軸ラベル（目標資産額の位置）
+        const targetY = yOf(result.requiredAssets)
+
         return (
           <div className="bg-white rounded-2xl border border-gray-200 p-5">
-            <div className="text-sm font-medium text-gray-500 mb-3">資産推移</div>
-            <div className="relative">
-              {/* バーグラフ */}
-              <div className="h-36 flex items-end gap-px">
-                {sampled.map((d, i) => (
-                  <div
-                    key={i}
-                    className={`flex-1 rounded-t-sm ${d.phase === 'fire' ? 'bg-amber-400' : 'bg-emerald-400'}`}
-                    style={{ height: `${(d.assets / maxAssets) * 100}%` }}
-                  />
-                ))}
-              </div>
+            <div className="text-sm font-medium text-gray-500 mb-1">資産推移</div>
+            <p className="text-xs text-gray-400 mb-3">
+              貯蓄期は確定利回りでの試算。FIRE後はモンテカルロ1,000回の中央値・上下25%の範囲を表示
+            </p>
+            <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+              {/* 目標資産ライン */}
+              <line x1={PL} y1={targetY} x2={W - PR} y2={targetY}
+                stroke="#10b981" strokeWidth="1" strokeDasharray="4,3" opacity="0.5" />
+              <text x={PL + 2} y={targetY - 3} fontSize="8" fill="#10b981" opacity="0.8">
+                目標 {formatMan(result.requiredAssets)}
+              </text>
+
+              {/* FIRE達成時点の縦線 */}
+              {monte && (
+                <line x1={xOf(fireMonth)} y1={PT} x2={xOf(fireMonth)} y2={PT + cH}
+                  stroke="#6b7280" strokeWidth="1" strokeDasharray="3,3" opacity="0.4" />
+              )}
+
+              {/* モンテカルロバンド（上下25%の幅） */}
+              {bandPath && (
+                <path d={bandPath} fill="#fbbf24" fillOpacity="0.25" />
+              )}
+
+              {/* モンテカルロ上位25%・下位25%（点線） */}
+              {upperPts.length > 0 && (
+                <polyline points={upperPts.join(' ')} fill="none"
+                  stroke="#f59e0b" strokeWidth="1" strokeDasharray="3,3" opacity="0.7" />
+              )}
+              {lowerPts.length > 0 && (
+                <polyline points={lowerPts.join(' ')} fill="none"
+                  stroke="#f59e0b" strokeWidth="1" strokeDasharray="3,3" opacity="0.7" />
+              )}
+
+              {/* モンテカルロ中央値 */}
+              {medianPts && (
+                <polyline points={medianPts} fill="none"
+                  stroke="#f59e0b" strokeWidth="2" />
+              )}
+
+              {/* 貯蓄期ライン */}
+              {accPts && (
+                <polyline points={accPts} fill="none"
+                  stroke="#10b981" strokeWidth="2" strokeLinejoin="round" />
+              )}
 
               {/* 横軸ラベル */}
-              <div className="relative h-5 mt-1">
-                {labelAges.map(age => {
-                  const monthsFromNow = (age - currentAge) * 12
-                  const posRatio = monthsFromNow / lastMonth
-                  if (posRatio < 0 || posRatio > 1) return null
-                  return (
-                    <span
-                      key={age}
-                      className="absolute text-xs text-gray-400 -translate-x-1/2"
-                      style={{ left: `${posRatio * 100}%` }}
-                    >
-                      {age}歳
-                    </span>
-                  )
-                })}
-              </div>
-            </div>
+              {labelAges.map(age => {
+                const x = xOf((age - currentAge) * 12)
+                return (
+                  <text key={age} x={x} y={H - 4} fontSize="9"
+                    fill="#9ca3af" textAnchor="middle">{age}歳</text>
+                )
+              })}
 
-            <div className="flex gap-4 mt-2 text-xs text-gray-400">
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-emerald-400 inline-block" />貯蓄期</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-400 inline-block" />FIRE後</span>
+              {/* FIRE達成ラベル */}
+              {monte && result.fireAge && (
+                <text x={xOf(fireMonth)} y={PT + 10} fontSize="8"
+                  fill="#6b7280" textAnchor="middle">FIRE</text>
+              )}
+            </svg>
+
+            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-gray-400">
+              <span className="flex items-center gap-1">
+                <svg width="16" height="8"><line x1="0" y1="4" x2="16" y2="4" stroke="#10b981" strokeWidth="2"/></svg>
+                貯蓄期（確定）
+              </span>
+              <span className="flex items-center gap-1">
+                <svg width="16" height="8"><line x1="0" y1="4" x2="16" y2="4" stroke="#f59e0b" strokeWidth="2"/></svg>
+                FIRE後・中央値
+              </span>
+              <span className="flex items-center gap-1">
+                <svg width="16" height="8">
+                  <rect x="0" y="1" width="16" height="6" fill="#fbbf24" fillOpacity="0.35"/>
+                </svg>
+                上下25%の幅
+              </span>
             </div>
           </div>
         )
