@@ -158,30 +158,65 @@ export default function ResultPage() {
         </div>
       )}
 
-      {/* 資産推移グラフ（簡易） */}
-      {result.monthlyData.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-200 p-5">
-          <div className="text-sm font-medium text-gray-500 mb-3">資産推移（概要）</div>
-          <div className="relative h-32 flex items-end gap-px overflow-hidden rounded-lg">
-            {(() => {
-              const interval = Math.max(1, Math.floor(result.monthlyData.length / 60))
-              const sampled = result.monthlyData.filter((_, i) => i % interval === 0)
-              const maxAssets = Math.max(...sampled.map(d => d.assets), result.requiredAssets)
-              return sampled.map((d, i) => (
-                <div
-                  key={i}
-                  className={`flex-1 rounded-t-sm transition-all ${d.phase === 'fire' ? 'bg-amber-400' : 'bg-emerald-400'}`}
-                  style={{ height: `${(d.assets / maxAssets) * 100}%` }}
-                />
-              ))
-            })()}
+      {/* 資産推移グラフ */}
+      {result.monthlyData.length > 0 && (() => {
+        const currentAge = data.currentAge!
+        const BAR_COUNT = 60
+        const interval = Math.max(1, Math.floor(result.monthlyData.length / BAR_COUNT))
+        const sampled = result.monthlyData.filter((_, i) => i % interval === 0)
+        const maxAssets = Math.max(...sampled.map(d => d.assets), result.requiredAssets)
+
+        // 横軸ラベル：5歳刻みで表示
+        const firstAge = currentAge
+        const lastMonth = result.monthlyData[result.monthlyData.length - 1].month
+        const lastAge = currentAge + Math.floor(lastMonth / 12)
+        const labelAges: number[] = []
+        const startLabel = Math.ceil(firstAge / 5) * 5
+        for (let age = startLabel; age <= lastAge; age += 5) {
+          labelAges.push(age)
+        }
+
+        return (
+          <div className="bg-white rounded-2xl border border-gray-200 p-5">
+            <div className="text-sm font-medium text-gray-500 mb-3">資産推移</div>
+            <div className="relative">
+              {/* バーグラフ */}
+              <div className="h-36 flex items-end gap-px">
+                {sampled.map((d, i) => (
+                  <div
+                    key={i}
+                    className={`flex-1 rounded-t-sm ${d.phase === 'fire' ? 'bg-amber-400' : 'bg-emerald-400'}`}
+                    style={{ height: `${(d.assets / maxAssets) * 100}%` }}
+                  />
+                ))}
+              </div>
+
+              {/* 横軸ラベル */}
+              <div className="relative h-5 mt-1">
+                {labelAges.map(age => {
+                  const monthsFromNow = (age - currentAge) * 12
+                  const posRatio = monthsFromNow / lastMonth
+                  if (posRatio < 0 || posRatio > 1) return null
+                  return (
+                    <span
+                      key={age}
+                      className="absolute text-xs text-gray-400 -translate-x-1/2"
+                      style={{ left: `${posRatio * 100}%` }}
+                    >
+                      {age}歳
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="flex gap-4 mt-2 text-xs text-gray-400">
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-emerald-400 inline-block" />貯蓄期</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-400 inline-block" />FIRE後</span>
+            </div>
           </div>
-          <div className="flex gap-4 mt-2 text-xs text-gray-400">
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-emerald-400 inline-block" />貯蓄期</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-400 inline-block" />FIRE後</span>
-          </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* アクション */}
       <div className="space-y-3">
