@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ja" className={notoSansJP.variable}>
+    <html lang="ja" className={notoSansJP.variable} style={{ colorScheme: 'light' }}>
       <body className="min-h-screen bg-gray-50 text-gray-900 font-sans">
         <SimulatorProvider>
           {children}
