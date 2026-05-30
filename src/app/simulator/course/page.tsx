@@ -2,23 +2,37 @@
 
 import { useRouter } from 'next/navigation'
 import { useSimulator } from '@/contexts/SimulatorContext'
-import { FireCourse, COURSE_LABELS, COURSE_MULTIPLIERS, COURSE_EXPENSE_GUIDE } from '@/types/simulator'
+import { FireCourse, COURSE_LABELS, COURSE_MULTIPLIERS } from '@/types/simulator'
 
 const COURSE_ICONS: Record<FireCourse, string> = {
   lean: '🌿',
+  side: '💼',
   normal: '🏡',
   fat: '✨',
-  side: '💼',
 }
 
-const COURSE_DESCRIPTIONS: Record<FireCourse, string> = {
-  lean: `必要資産 = 年間生活費 × ${COURSE_MULTIPLIERS.lean}（4%ルール）`,
-  normal: `必要資産 = 年間生活費 × ${COURSE_MULTIPLIERS.normal}`,
-  fat: `必要資産 = 年間生活費 × ${COURSE_MULTIPLIERS.fat}`,
-  side: `必要資産 = 年間生活費 × ${COURSE_MULTIPLIERS.side}（労働収入で補完）`,
+const COURSE_PHILOSOPHY: Record<FireCourse, string> = {
+  lean: 'できるだけ早くFIREしたい。ある程度のリスクを取ってでも早期の自由を優先する',
+  side: '完全リタイアでなくていい。好きなことで少し稼ぎながら自由に生きる',
+  normal: '今の生活水準をそのまま保って、仕事を辞めたい',
+  fat: 'お金の心配を一切したくない。完全に安心して自由に生きたい',
 }
 
-const COURSES: FireCourse[] = ['lean', 'normal', 'fat', 'side']
+const COURSE_DETAIL: Record<FireCourse, string> = {
+  lean: '月15万円前後の生活を想定。4%ルール（25倍）で達成は早いが運用リスクは高め',
+  side: '月12〜20万円＋副業・パートなどで補う。必要資産は最も少ない（20倍）',
+  normal: '月20〜25万円の生活を想定。やや保守的な3.6%ルール（28倍）',
+  fat: '月30万円以上の生活を想定。最も保守的な3%ルール（33倍）で安全性が最高',
+}
+
+const COURSE_SWR: Record<FireCourse, string> = {
+  lean: '取り崩し率 4.0%',
+  side: '副収入で補完',
+  normal: '取り崩し率 3.6%',
+  fat: '取り崩し率 3.0%',
+}
+
+const COURSES: FireCourse[] = ['lean', 'side', 'normal', 'fat']
 
 export default function CoursePage() {
   const router = useRouter()
@@ -33,35 +47,51 @@ export default function CoursePage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">FIREコースを選ぶ</h1>
-        <p className="text-gray-500 mt-1 text-sm">目指すライフスタイルに合ったコースを選んでください</p>
+        <p className="text-gray-500 mt-1 text-sm">あなたのFIREへのアプローチを選んでください</p>
       </div>
 
       <div className="space-y-3">
-        {COURSES.map(course => (
-          <button
-            key={course}
-            onClick={() => handleSelect(course)}
-            className={`w-full text-left rounded-2xl border-2 p-4 transition-all hover:shadow-md ${
-              data.fireCourse === course
-                ? 'border-emerald-500 bg-emerald-50'
-                : 'border-gray-200 bg-white hover:border-emerald-300'
-            }`}
-          >
-            <div className="flex items-start gap-3">
-              <span className="text-2xl">{COURSE_ICONS[course]}</span>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-gray-900">{COURSE_LABELS[course]}</span>
-                  {data.fireCourse === course && (
-                    <span className="text-xs bg-emerald-500 text-white px-2 py-0.5 rounded-full">選択中</span>
-                  )}
+        {COURSES.map(course => {
+          const swr = 1 / COURSE_MULTIPLIERS[course] * 100
+          const isSelected = data.fireCourse === course
+          return (
+            <button
+              key={course}
+              onClick={() => handleSelect(course)}
+              className={`w-full text-left rounded-2xl border-2 p-4 transition-all hover:shadow-md ${
+                isSelected
+                  ? 'border-emerald-500 bg-emerald-50'
+                  : 'border-gray-200 bg-white hover:border-emerald-300'
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">{COURSE_ICONS[course]}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-gray-900">{COURSE_LABELS[course]}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      isSelected
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-gray-100 text-gray-500'
+                    }`}>
+                      {COURSE_SWR[course]}
+                    </span>
+                    {isSelected && (
+                      <span className="text-xs bg-emerald-500 text-white px-2 py-0.5 rounded-full">選択中</span>
+                    )}
+                  </div>
+                  <div className="text-sm text-gray-700 mt-1 font-medium">{COURSE_PHILOSOPHY[course]}</div>
+                  <div className="text-xs text-gray-400 mt-1">{COURSE_DETAIL[course]}</div>
                 </div>
-                <div className="text-sm text-gray-500 mt-0.5">{COURSE_EXPENSE_GUIDE[course]}</div>
-                <div className="text-xs text-gray-400 mt-1">{COURSE_DESCRIPTIONS[course]}</div>
               </div>
-            </div>
-          </button>
-        ))}
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-600">
+        <p className="font-medium text-gray-700">取り崩し率とは？</p>
+        <p className="mt-1 text-gray-500">FIRE後に毎年資産の何%を使うかの割合。低いほど資産が長持ちしやすく、成功率が高くなります。コースによって異なる理由は、各コースが異なるリスク許容度を前提としているためです。</p>
       </div>
 
       <div className="bg-blue-50 rounded-xl p-4 text-sm text-blue-700">

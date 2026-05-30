@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSimulator } from '@/contexts/SimulatorContext'
 import { runSimulation, runMonteCarlo, runMonteCarloFromFire } from '@/lib/simulation'
-import { SimulationResult, MonteCarloResult, COURSE_LABELS } from '@/types/simulator'
+import { SimulationResult, MonteCarloResult, COURSE_LABELS, COURSE_MULTIPLIERS } from '@/types/simulator'
 
 function formatMan(yen: number): string {
   const man = Math.round(yen / 10000)
@@ -378,7 +378,14 @@ export default function ResultPage() {
       {/* モンテカルロ成功率 */}
       {canFIRE && monte !== null && (
         <div className="bg-white rounded-2xl border border-gray-200 p-5">
-          <div className="text-sm font-medium text-gray-500 mb-1">{data.simulateUntilAge}歳まで資産は持つか？</div>
+          <div className="flex items-center gap-2 mb-1">
+            <div className="text-sm font-medium text-gray-500">{data.simulateUntilAge}歳まで資産は持つか？</div>
+            {data.fireCourse && (
+              <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium">
+                取り崩し率 {(1 / COURSE_MULTIPLIERS[data.fireCourse] * 100).toFixed(1)}%
+              </span>
+            )}
+          </div>
           <p className="text-xs text-gray-400 mb-3">
             {result.fireAge}歳でFIREし、{data.simulateUntilAge}歳まで月{data.fireMonthlyExpenses ? Math.round(data.fireMonthlyExpenses / 10000) : 0}万円を取り崩した場合の資産継続確率（1,000パターンでシミュレーション）
           </p>
