@@ -292,22 +292,6 @@ export default function ResultPage() {
           }
         }
 
-        // 4. 年金受給を70歳に繰り下げ（設定済みかつ65歳以下の場合のみ）
-        if ((data.pensionMonthly ?? 0) > 0 && data.pensionStartAge <= 65) {
-          const sd = { ...data, pensionMonthly: Math.round(data.pensionMonthly * 1.42), pensionStartAge: 70 }
-          const ss = runSimulation(sd)
-          if (ss.monthsToFIRE !== null) {
-            const sm = runMonteCarlo(sd, 1000)
-            scenarioResults.push({
-              label: '年金受給を70歳に繰り下げる',
-              description: `月${Math.round(data.pensionMonthly * 1.42 / 10000)}万円（42%増）で70歳から受給`,
-              rate: sm.successRate,
-              fireAge: ss.fireAge,
-              delta: sm.successRate - mc.successRate,
-            })
-          }
-        }
-
         setScenarios(scenarioResults.sort((a, b) => b.delta - a.delta).slice(0, 3))
 
         setIsCalculating(false)
