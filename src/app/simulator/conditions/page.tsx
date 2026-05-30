@@ -6,7 +6,7 @@ import { useSimulator } from '@/contexts/SimulatorContext'
 
 function toMan(yen: number | null): string {
   if (yen === null) return ''
-  return yen === 0 ? '0' : String(Math.round(yen / 10000))
+  return yen === 0 ? '0' : String(yen / 10000)
 }
 
 function fromMan(man: string): number | null {
