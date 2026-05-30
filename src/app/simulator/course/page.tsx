@@ -40,7 +40,6 @@ export default function CoursePage() {
 
   const handleSelect = (course: FireCourse) => {
     updateData({ fireCourse: course })
-    router.push('/simulator/expenses')
   }
 
   return (
@@ -98,6 +97,14 @@ export default function CoursePage() {
         <p className="font-medium">コースは後から変更できます</p>
         <p className="mt-1 text-blue-600">結果画面で別のコースと比較することも可能です</p>
       </div>
+
+      <button
+        onClick={() => router.push('/simulator/expenses')}
+        disabled={!data.fireCourse}
+        className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-200 disabled:text-gray-400 text-white py-4 rounded-2xl font-semibold transition-colors"
+      >
+        次へ
+      </button>
     </div>
   )
 }
