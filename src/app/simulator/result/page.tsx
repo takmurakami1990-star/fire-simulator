@@ -219,17 +219,25 @@ interface ScenarioResult {
   delta: number
 }
 
+interface FixOption {
+  label: string
+  detail: string
+  fireAge: number
+}
+
 export default function ResultPage() {
   const router = useRouter()
   const { data } = useSimulator()
   const [result, setResult] = useState<SimulationResult | null>(null)
   const [monte, setMonte] = useState<MonteCarloResult | null>(null)
   const [scenarios, setScenarios] = useState<ScenarioResult[] | null>(null)
+  const [fixOptions, setFixOptions] = useState<FixOption[] | null>(null)
   const [isCalculating, setIsCalculating] = useState(true)
 
   const calculate = useCallback(() => {
     setIsCalculating(true)
     setScenarios(null)
+    setFixOptions(null)
     const sim = runSimulation(data)
     setResult(sim)
 
@@ -297,7 +305,55 @@ export default function ResultPage() {
         setIsCalculating(false)
       }, 50)
     } else {
-      setIsCalculating(false)
+      // FIRE未達成：何をすれば達成できるか試算
+      setTimeout(() => {
+        const options: FixOption[] = []
+
+        // 1. 貯蓄額を増やす（2万円刻みで最小値を探す）
+        for (let add = 20000; add <= 400000; add += 20000) {
+          const s = runSimulation({ ...data, monthlySavings: (data.monthlySavings ?? 0) + add })
+          if (s.monthsToFIRE !== null && s.fireAge !== null) {
+            options.push({
+              label: `月の貯蓄額を${add / 10000}万円増やす`,
+              detail: `月${Math.round(((data.monthlySavings ?? 0) + add) / 10000)}万円の貯蓄で達成`,
+              fireAge: s.fireAge,
+            })
+            break
+          }
+        }
+
+        // 2. 生活費を削減（5%刻みで最小削減率を探す）
+        if (data.fireMonthlyExpenses) {
+          for (const ratio of [0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.6, 0.5]) {
+            const reduced = Math.round(data.fireMonthlyExpenses * ratio)
+            const s = runSimulation({ ...data, fireMonthlyExpenses: reduced })
+            if (s.monthsToFIRE !== null && s.fireAge !== null) {
+              const cut = Math.round((data.fireMonthlyExpenses - reduced) / 10000)
+              options.push({
+                label: `生活費を月${cut}万円削減する`,
+                detail: `月${Math.round(reduced / 10000)}万円の生活費で達成`,
+                fireAge: s.fireAge,
+              })
+              break
+            }
+          }
+        }
+
+        // 3. リーンFIREに変更（既にリーンでなければ）
+        if (data.fireCourse !== 'lean') {
+          const s = runSimulation({ ...data, fireCourse: 'lean' })
+          if (s.monthsToFIRE !== null && s.fireAge !== null) {
+            options.push({
+              label: 'リーンFIREコースに切り替える',
+              detail: '取り崩し率4.0%（25倍）で必要資産を減らす',
+              fireAge: s.fireAge,
+            })
+          }
+        }
+
+        setFixOptions(options)
+        setIsCalculating(false)
+      }, 50)
     }
   }, [data])
 
@@ -366,13 +422,63 @@ export default function ResultPage() {
           )}
         </div>
       ) : (
-        <div className="bg-amber-50 rounded-2xl border border-amber-200 p-5">
-          <div className="text-sm font-medium text-amber-700 mb-1">FIRE達成</div>
-          <div className="text-lg font-bold text-amber-700">50年以内には達成できません</div>
-          <p className="text-xs text-amber-600 mt-2">
-            貯蓄額の増加・生活費の削減・期待リターンの見直しを検討してみましょう
-          </p>
-        </div>
+        <>
+          <div className="bg-amber-50 rounded-2xl border border-amber-200 p-5">
+            <div className="text-sm font-medium text-amber-700 mb-1">FIRE達成</div>
+            <div className="text-lg font-bold text-amber-700">50年以内には達成できません</div>
+            <div className="mt-3 space-y-1.5">
+              <div className="flex justify-between text-sm">
+                <span className="text-amber-600">目標額</span>
+                <span className="font-semibold text-amber-700">{formatMan(result.requiredAssets)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-amber-600">50年後の資産（見込み）</span>
+                <span className="font-semibold text-amber-700">
+                  {formatMan(result.monthlyData[result.monthlyData.length - 1]?.assets ?? 0)}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm border-t border-amber-200 pt-1.5">
+                <span className="text-amber-600 font-medium">不足額</span>
+                <span className="font-bold text-amber-700">
+                  {formatMan(Math.max(0, result.requiredAssets - (result.monthlyData[result.monthlyData.length - 1]?.assets ?? 0)))}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {fixOptions !== null && fixOptions.length > 0 && (
+            <div className="bg-white rounded-2xl border border-gray-200 p-5">
+              <div className="font-medium text-gray-800 mb-0.5">こうすれば達成できます</div>
+              <p className="text-xs text-gray-400 mb-4">条件を変えた場合のシミュレーション</p>
+              <div className="divide-y divide-gray-100">
+                {fixOptions.map(opt => (
+                  <div key={opt.label} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-gray-800">{opt.label}</div>
+                      <div className="text-xs text-gray-400">{opt.detail}</div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-lg font-bold text-emerald-600">{opt.fireAge}歳</div>
+                      <div className="text-xs text-gray-400">でFIRE</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => router.push('/simulator/conditions')}
+                className="mt-4 w-full border border-emerald-300 text-emerald-700 py-3 rounded-xl text-sm font-medium hover:bg-emerald-50 transition-colors"
+              >
+                条件を変えて再計算する
+              </button>
+            </div>
+          )}
+
+          {fixOptions !== null && fixOptions.length === 0 && (
+            <div className="bg-white rounded-2xl border border-gray-200 p-5 text-sm text-gray-500">
+              貯蓄額の大幅な増加、または生活費の削減を検討してください。
+            </div>
+          )}
+        </>
       )}
 
       {/* モンテカルロ成功率 */}
