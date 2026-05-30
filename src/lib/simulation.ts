@@ -6,10 +6,46 @@ function stdDevForYield(annualYield: number): number {
   return 0.07
 }
 
-// Box-Muller 法で正規分布乱数を生成
-function randNorm(mean: number, std: number): number {
-  const u1 = Math.random()
-  const u2 = Math.random()
+// シード付きPRNG（mulberry32）- 同じ入力なら常に同じ結果を返す
+function createPRNG(seed: number): () => number {
+  let s = seed >>> 0
+  return () => {
+    s = (s + 0x6D2B79F5) >>> 0
+    let t = Math.imul(s ^ (s >>> 15), 1 | s)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+// 入力パラメータからシードを導出（FNVハッシュ）
+function deriveSeed(d: SimulatorData): number {
+  const total = Object.values(d.assets).reduce((s, v) => s + v, 0)
+  const nums = [
+    d.currentAge ?? 0,
+    d.monthlySavings ?? 0,
+    Math.round(d.expectedYield * 10),
+    Math.round(d.inflationRate * 10),
+    Math.round(total / 10000),
+    Math.round((d.fireMonthlyExpenses ?? 0) / 10000),
+    Math.round((d.pensionMonthly ?? 0) / 10000),
+    d.pensionStartAge,
+    d.simulateUntilAge,
+    d.hasChildren ? 1 : 0,
+    Math.round((d.sideFIREIncome ?? 0) / 10000),
+    d.fireCourse === 'lean' ? 1 : d.fireCourse === 'normal' ? 2 : d.fireCourse === 'fat' ? 3 : 4,
+  ]
+  let hash = 2166136261
+  for (const n of nums) {
+    hash ^= (n & 0xFFFFFFFF)
+    hash = Math.imul(hash, 16777619)
+  }
+  return hash >>> 0
+}
+
+// Box-Muller 法で正規分布乱数を生成（シード付きPRNG使用）
+function randNormWith(rand: () => number, mean: number, std: number): number {
+  const u1 = Math.max(rand(), 1e-10)
+  const u2 = rand()
   const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2)
   return mean + std * z
 }
@@ -175,6 +211,7 @@ export function runMonteCarloFromFire(
   const pensionStartMonthOffset = pensionStartAge > fireAge ? (pensionStartAge - fireAge) * 12 : 0
   const monthsToThisFire = (fireAge - (currentAge ?? 0)) * 12
 
+  const rand = createPRNG(deriveSeed(d) ^ (fireAge * 31) ^ (startingAssets >>> 10))
   const allPaths: number[][] = []
   let successCount = 0
 
@@ -184,7 +221,7 @@ export function runMonteCarloFromFire(
     let ruined = false
 
     for (let m = 0; m < SIMULATE_MONTHS; m++) {
-      const monthlyReturn = randNorm(annualYield / 12, monthlyStdDev)
+      const monthlyReturn = randNormWith(rand, annualYield / 12, monthlyStdDev)
       const currentPension = m >= pensionStartMonthOffset ? (pensionMonthly ?? 0) : 0
       const sideIncome = sideFIREIncome ?? 0
       const inflatedExpenses = fireMonthlyExpenses * Math.pow(1 + monthlyInflation, m)
@@ -267,6 +304,7 @@ export function runMonteCarlo(d: SimulatorData, runs = 1000): MonteCarloResult {
     ? (pensionStartAge - currentAge) * 12
     : 0
 
+  const rand = createPRNG(deriveSeed(d))
   const allPaths: number[][] = []
   let successCount = 0
 
@@ -276,7 +314,7 @@ export function runMonteCarlo(d: SimulatorData, runs = 1000): MonteCarloResult {
     let ruined = false
 
     for (let m = 0; m < SIMULATE_MONTHS; m++) {
-      const monthlyReturn = randNorm(annualYield / 12, monthlyStdDev)
+      const monthlyReturn = randNormWith(rand, annualYield / 12, monthlyStdDev)
       const currentPension = m >= pensionStartMonthOffset - (baseResult.monthsToFIRE ?? 0)
         ? (pensionMonthly ?? 0)
         : 0
