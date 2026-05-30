@@ -115,22 +115,44 @@ export default function ConditionsPage() {
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">運用設定</h2>
         </div>
 
-        <div className="px-4 py-3 flex items-center gap-3">
-          <div className="flex-1">
-            <div className="text-sm font-medium text-gray-800">期待リターン（年率）</div>
-            <div className="text-xs text-gray-400">S&P500長期平均は約7%</div>
+        <div className="px-4 py-3">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="flex-1">
+              <div className="text-sm font-medium text-gray-800">期待リターン（年率）</div>
+              <div className="text-xs text-gray-400">運用商品の長期平均リターンを入力</div>
+            </div>
+            <input
+              type="number"
+              inputMode="decimal"
+              value={expectedYield}
+              onChange={e => setExpectedYield(e.target.value)}
+              step="0.5"
+              min="0"
+              max="20"
+              className="w-16 border border-gray-300 rounded-lg px-2 py-2 text-right text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            <span className="text-xs text-gray-500 w-4">%</span>
           </div>
-          <input
-            type="number"
-            inputMode="decimal"
-            value={expectedYield}
-            onChange={e => setExpectedYield(e.target.value)}
-            step="0.5"
-            min="0"
-            max="20"
-            className="w-16 border border-gray-300 rounded-lg px-2 py-2 text-right text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-          <span className="text-xs text-gray-500 w-4">%</span>
+          <div className="flex gap-2">
+            {[
+              { label: 'S&P500', value: '7' },
+              { label: 'オルカン', value: '6' },
+              { label: '保守的', value: '4' },
+            ].map(p => (
+              <button
+                key={p.label}
+                type="button"
+                onClick={() => setExpectedYield(p.value)}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                  expectedYield === p.value
+                    ? 'bg-emerald-600 text-white border-emerald-600'
+                    : 'bg-white text-gray-500 border-gray-300 hover:border-emerald-400 hover:text-emerald-600'
+                }`}
+              >
+                {p.label} {p.value}%
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="px-4 py-3 flex items-center gap-3">
