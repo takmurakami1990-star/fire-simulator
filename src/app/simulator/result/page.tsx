@@ -42,15 +42,18 @@ function MonteCarloChart({
   const zeroY = yOf(0)
   const startY = yOf(requiredAssets)
 
-  // キリのいい縦軸目盛りを2〜3本生成
+  // 3〜5本になるようにキリのいい縦軸目盛りを生成
   const yTicks: number[] = (() => {
-    const rawStep = maxA / 4
-    const mag = Math.pow(10, Math.floor(Math.log10(rawStep)))
-    const norm = rawStep / mag
-    const step = norm <= 1 ? mag : norm <= 2 ? 2 * mag : norm <= 5 ? 5 * mag : 10 * mag
+    // 候補ステップ（万円単位）
+    const candidates = [500, 1000, 2000, 3000, 5000, 10000, 20000, 30000, 50000]
+    const maxMan = Math.round(maxA / 10000)
+    const chosen = candidates.find(s => {
+      const count = Math.floor(maxMan * 0.93 / s)
+      return count >= 3 && count <= 5
+    }) ?? candidates[candidates.length - 1]
     const ticks: number[] = []
-    for (let v = step; v < maxA * 0.93; v += step) {
-      ticks.push(Math.round(v / 10000) * 10000) // 万円単位に丸める
+    for (let v = chosen; v < maxMan * 0.93; v += chosen) {
+      ticks.push(v * 10000)
     }
     return ticks
   })()
@@ -101,7 +104,9 @@ function MonteCarloChart({
         {yTicks.map(v => {
           const y = yOf(v)
           const man = Math.round(v / 10000)
-          const label = man >= 10000 ? `${Math.floor(man / 10000)}億` : `${man.toLocaleString()}万`
+          const label = man >= 10000
+            ? (man % 10000 === 0 ? `${man / 10000}億` : `${(man / 10000).toFixed(1)}億`)
+            : `${man.toLocaleString()}万`
           return (
             <g key={v}>
               <line x1={PL} y1={y} x2={W - PR} y2={y}
