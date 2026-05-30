@@ -6,7 +6,6 @@ export interface Assets {
   nisaGrowth: number
   ideoDc: number
   taxable: number
-  other: number
 }
 
 export interface SimulatorData {
@@ -46,7 +45,6 @@ export const defaultSimulatorData: SimulatorData = {
     nisaGrowth: 0,
     ideoDc: 0,
     taxable: 0,
-    other: 0,
   },
   loanBalance: null,
   loanMonthlyPayment: null,
