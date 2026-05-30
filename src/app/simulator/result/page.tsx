@@ -380,6 +380,13 @@ export default function ResultPage() {
   const canFIRE = result.monthsToFIRE !== null
   const successRate = monte?.successRate ?? null
 
+  // FIRE未達成の原因を判別
+  const maxAssets = result.monthlyData[result.monthlyData.length - 1]?.assets ?? 0
+  const firstReachIdx = result.monthlyData.findIndex(d => d.assets >= result.requiredAssets)
+  const actualReachAge = firstReachIdx >= 0
+    ? (data.currentAge ?? 0) + Math.floor(firstReachIdx / 12)
+    : null
+
   return (
     <div className="space-y-6">
       <div>
@@ -427,25 +434,34 @@ export default function ResultPage() {
         <>
           <div className="bg-amber-50 rounded-2xl border border-amber-200 p-5">
             <div className="text-sm font-medium text-amber-700 mb-1">FIRE達成</div>
-            <div className="text-lg font-bold text-amber-700">50年以内には達成できません</div>
-            <div className="mt-3 space-y-1.5">
-              <div className="flex justify-between text-sm">
-                <span className="text-amber-600">目標額</span>
-                <span className="font-semibold text-amber-700">{formatMan(result.requiredAssets)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-amber-600">50年後の資産（見込み）</span>
-                <span className="font-semibold text-amber-700">
-                  {formatMan(result.monthlyData[result.monthlyData.length - 1]?.assets ?? 0)}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm border-t border-amber-200 pt-1.5">
-                <span className="text-amber-600 font-medium">不足額</span>
-                <span className="font-bold text-amber-700">
-                  {formatMan(Math.max(0, result.requiredAssets - (result.monthlyData[result.monthlyData.length - 1]?.assets ?? 0)))}
-                </span>
-              </div>
-            </div>
+            {actualReachAge !== null ? (
+              <>
+                <div className="text-lg font-bold text-amber-700">65歳未満でのFIRE達成は難しい状況です</div>
+                <p className="text-xs text-amber-600 mt-2">
+                  現在の条件では{actualReachAge}歳で目標額に到達しますが、早期退職（65歳未満）の条件を満たしていません。
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="text-lg font-bold text-amber-700">50年間積み立てても目標額に届きません</div>
+                <div className="mt-3 space-y-1.5">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-amber-600">目標額</span>
+                    <span className="font-semibold text-amber-700">{formatMan(result.requiredAssets)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-amber-600">50年後の資産（見込み）</span>
+                    <span className="font-semibold text-amber-700">{formatMan(maxAssets)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm border-t border-amber-200 pt-1.5">
+                    <span className="text-amber-600 font-medium">不足額</span>
+                    <span className="font-bold text-amber-700">
+                      {formatMan(Math.max(0, result.requiredAssets - maxAssets))}
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           {fixOptions !== null && fixOptions.length > 0 && (
