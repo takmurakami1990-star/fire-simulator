@@ -17,7 +17,7 @@ const ASSET_FIELDS: AssetField[] = [
   { key: 'nisaGrowth', label: '成長投資枠NISA', description: '成長投資枠の評価額' },
   { key: 'ideoDc', label: 'iDeCo・DC', description: 'iDeCo / 企業型DCの評価額' },
   { key: 'taxable', label: '特定・一般口座', description: '課税口座の株・投信の評価額' },
-  { key: 'other', label: 'その他資産', description: '不動産・仮想通貨・金など' },
+  { key: 'other', label: 'その他資産', description: '仮想通貨・金・外貨など' },
 ]
 
 function toMan(yen: number): string {
