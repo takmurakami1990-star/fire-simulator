@@ -75,9 +75,6 @@ export default function CoursePage() {
                     }`}>
                       {COURSE_SWR[course]}
                     </span>
-                    {isSelected && (
-                      <span className="text-xs bg-emerald-500 text-white px-2 py-0.5 rounded-full">選択中</span>
-                    )}
                   </div>
                   <div className="text-sm text-gray-700 mt-1 font-medium">{COURSE_PHILOSOPHY[course]}</div>
                   <div className="flex items-center gap-3 mt-1.5">
