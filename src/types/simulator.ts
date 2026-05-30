@@ -2,7 +2,6 @@ export type FireCourse = 'lean' | 'normal' | 'fat' | 'side'
 
 export interface Assets {
   cashReserve: number
-  cashInvestment: number
   nisaTsumitate: number
   nisaGrowth: number
   ideoDc: number
@@ -43,7 +42,6 @@ export const defaultSimulatorData: SimulatorData = {
   fireMonthlyExpenses: null,
   assets: {
     cashReserve: 0,
-    cashInvestment: 0,
     nisaTsumitate: 0,
     nisaGrowth: 0,
     ideoDc: 0,

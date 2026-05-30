@@ -12,8 +12,7 @@ interface AssetField {
 }
 
 const ASSET_FIELDS: AssetField[] = [
-  { key: 'cashReserve', label: '生活防衛費・現金', description: '緊急用の現金（投資に回さない分）' },
-  { key: 'cashInvestment', label: '投資用現金', description: '近く投資する予定の現金' },
+  { key: 'cashReserve', label: '現金・預金', description: '生活防衛費・投資用現金など現金全般' },
   { key: 'nisaTsumitate', label: 'つみたてNISA', description: 'つみたてNISA口座の評価額' },
   { key: 'nisaGrowth', label: '成長投資枠NISA', description: '成長投資枠の評価額' },
   { key: 'ideoDc', label: 'iDeCo・DC', description: 'iDeCo / 企業型DCの評価額' },
@@ -36,7 +35,6 @@ export default function AssetsPage() {
 
   const [assets, setAssets] = useState<Record<keyof Assets, string>>({
     cashReserve: toMan(data.assets.cashReserve),
-    cashInvestment: toMan(data.assets.cashInvestment),
     nisaTsumitate: toMan(data.assets.nisaTsumitate),
     nisaGrowth: toMan(data.assets.nisaGrowth),
     ideoDc: toMan(data.assets.ideoDc),
@@ -61,7 +59,6 @@ export default function AssetsPage() {
   const handleNext = () => {
     const parsedAssets: Assets = {
       cashReserve: fromMan(assets.cashReserve),
-      cashInvestment: fromMan(assets.cashInvestment),
       nisaTsumitate: fromMan(assets.nisaTsumitate),
       nisaGrowth: fromMan(assets.nisaGrowth),
       ideoDc: fromMan(assets.ideoDc),
