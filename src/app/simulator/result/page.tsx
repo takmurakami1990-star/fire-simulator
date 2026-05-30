@@ -239,6 +239,7 @@ async function generateShareImage({
   canvas.width = W
   canvas.height = H
   const ctx = canvas.getContext('2d')!
+  const LP = 48
 
   // 背景
   ctx.fillStyle = '#ffffff'
@@ -253,93 +254,123 @@ async function generateShareImage({
 
   // 左アクセントライン
   ctx.fillStyle = '#059669'
-  ctx.fillRect(0, 10, 5, H - 10)
+  ctx.fillRect(0, 10, 5, H - 46)
 
   // アプリ名
-  ctx.font = 'bold 28px sans-serif'
+  ctx.font = 'bold 26px sans-serif'
   ctx.fillStyle = '#059669'
-  ctx.fillText('FIRE シミュレーター', 48, 72)
+  ctx.fillText('FIRE シミュレーター', LP, 68)
 
   // サブタイトル
-  ctx.font = '18px sans-serif'
-  ctx.fillStyle = '#6b7280'
-  ctx.fillText('あなたのFIREプラン', 48, 104)
+  ctx.font = '15px sans-serif'
+  ctx.fillStyle = '#9ca3af'
+  ctx.fillText('あなたのFIREプラン', LP, 92)
 
-  // 仕切り線
+  // 上仕切り線（左エリアのみ）
   ctx.strokeStyle = '#e5e7eb'
   ctx.lineWidth = 1
   ctx.beginPath()
-  ctx.moveTo(48, 124)
-  ctx.lineTo(W - 48, 124)
+  ctx.moveTo(LP, 112)
+  ctx.lineTo(430, 112)
+  ctx.stroke()
+
+  // 左右を分ける縦線
+  ctx.beginPath()
+  ctx.moveTo(450, 112)
+  ctx.lineTo(450, 360)
   ctx.stroke()
 
   // 必要資産ラベル
-  ctx.font = '15px sans-serif'
-  ctx.fillStyle = '#6b7280'
-  ctx.fillText('必要資産（目標額）', 48, 164)
+  ctx.font = '13px sans-serif'
+  ctx.fillStyle = '#9ca3af'
+  ctx.fillText('必要資産（目標額）', LP, 142)
 
-  // 必要資産金額
-  ctx.font = 'bold 52px sans-serif'
+  // 必要資産金額（幅に応じてフォントサイズ調整）
+  const assetsText = formatMan(requiredAssets)
+  let assetsFontSize = 44
+  ctx.font = `bold ${assetsFontSize}px sans-serif`
+  while (ctx.measureText(assetsText).width > 370 && assetsFontSize > 28) {
+    assetsFontSize -= 2
+    ctx.font = `bold ${assetsFontSize}px sans-serif`
+  }
   ctx.fillStyle = '#111827'
-  ctx.fillText(formatMan(requiredAssets), 48, 228)
+  ctx.fillText(assetsText, LP, 198)
 
-  // 縦の仕切り
+  // 中仕切り線
   ctx.strokeStyle = '#e5e7eb'
   ctx.lineWidth = 1
   ctx.beginPath()
-  ctx.moveTo(420, 144)
-  ctx.lineTo(420, 260)
+  ctx.moveTo(LP, 220)
+  ctx.lineTo(430, 220)
   ctx.stroke()
 
   // FIRE達成時期ラベル
-  ctx.font = '15px sans-serif'
-  ctx.fillStyle = '#6b7280'
-  ctx.fillText('FIRE達成時期', 448, 164)
+  ctx.font = '13px sans-serif'
+  ctx.fillStyle = '#9ca3af'
+  ctx.fillText('FIRE達成時期', LP, 250)
 
   // FIRE達成時期の値
   if (canFIRE && fireAge !== null) {
-    ctx.font = 'bold 52px sans-serif'
+    ctx.font = 'bold 54px sans-serif'
     ctx.fillStyle = '#059669'
-    ctx.fillText(`${fireAge}歳`, 448, 228)
+    ctx.fillText(`${fireAge}歳`, LP, 318)
   } else {
-    ctx.font = 'bold 28px sans-serif'
+    ctx.font = 'bold 24px sans-serif'
     ctx.fillStyle = '#d97706'
-    ctx.fillText('条件を', 448, 204)
-    ctx.fillText('見直し中', 448, 240)
+    ctx.fillText('条件を見直し中', LP, 300)
   }
 
-  // 仕切り線
-  ctx.strokeStyle = '#e5e7eb'
-  ctx.lineWidth = 1
-  ctx.beginPath()
-  ctx.moveTo(48, 278)
-  ctx.lineTo(W - 48, 278)
-  ctx.stroke()
+  // === ドーナツチャート（右エリア） ===
+  const cx = 628, cy = 220
+  const outerR = 108, innerR = 70
 
-  // 成功確率
   if (successRate !== null) {
-    ctx.font = '15px sans-serif'
-    ctx.fillStyle = '#6b7280'
-    ctx.fillText(`${simulateUntilAge}歳まで資産が持続する確率`, 48, 314)
-
     const rate = Math.round(successRate)
     const rateColor = rate >= 90 ? '#059669' : rate >= 70 ? '#d97706' : '#ef4444'
-    ctx.font = 'bold 64px sans-serif'
-    ctx.fillStyle = rateColor
-    ctx.fillText(`${rate}%`, 48, 388)
 
-    const rateLabel = rate >= 90 ? '安全性が高い計画です' : rate >= 70 ? '概ね安全、改善の余地あり' : '資産枯渇リスクが高めです'
-    ctx.font = '16px sans-serif'
+    // 背景サークル（グレー）
+    ctx.beginPath()
+    ctx.arc(cx, cy, outerR, 0, Math.PI * 2)
+    ctx.arc(cx, cy, innerR, Math.PI * 2, 0, true)
+    ctx.fillStyle = '#f3f4f6'
+    ctx.fill()
+
+    // 成功率アーク
+    const startAngle = -Math.PI / 2
+    const endAngle = startAngle + (rate / 100) * Math.PI * 2
+    ctx.beginPath()
+    ctx.arc(cx, cy, outerR, startAngle, endAngle)
+    ctx.arc(cx, cy, innerR, endAngle, startAngle, true)
     ctx.fillStyle = rateColor
-    ctx.fillText(rateLabel, 200, 380)
+    ctx.fill()
+
+    // 中央の%テキスト
+    ctx.textAlign = 'center'
+    ctx.font = 'bold 40px sans-serif'
+    ctx.fillStyle = '#111827'
+    ctx.fillText(`${rate}%`, cx, cy + 14)
+
+    // チャート下ラベル
+    ctx.font = '13px sans-serif'
+    ctx.fillStyle = '#9ca3af'
+    ctx.fillText(`${simulateUntilAge}歳まで資産が`, cx, cy + outerR + 22)
+    ctx.fillText('持続する確率', cx, cy + outerR + 40)
+    ctx.textAlign = 'left'
+  } else {
+    ctx.textAlign = 'center'
+    ctx.font = '15px sans-serif'
+    ctx.fillStyle = '#d97706'
+    ctx.fillText('条件を調整して', cx, cy - 10)
+    ctx.fillText('成功率を確認しよう', cx, cy + 18)
+    ctx.textAlign = 'left'
   }
 
   // 下部グレー帯
   ctx.fillStyle = '#f9fafb'
-  ctx.fillRect(0, H - 36, W, 36)
-  ctx.font = '13px sans-serif'
+  ctx.fillRect(0, H - 40, W, 40)
+  ctx.font = '12px sans-serif'
   ctx.fillStyle = '#9ca3af'
-  ctx.fillText('※ 本シミュレーションは参考値です。投資助言ではありません。', 48, H - 12)
+  ctx.fillText('※ 本シミュレーションは参考値です。投資助言ではありません。', LP, H - 14)
 
   return new Promise(resolve => canvas.toBlob(blob => resolve(blob!), 'image/png'))
 }
