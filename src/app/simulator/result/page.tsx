@@ -309,10 +309,12 @@ export default function ResultPage() {
       setTimeout(() => {
         const options: FixOption[] = []
 
+        const FIRE_AGE_LIMIT = 65
+
         // 1. 貯蓄額を増やす（2万円刻みで最小値を探す）
         for (let add = 20000; add <= 400000; add += 20000) {
           const s = runSimulation({ ...data, monthlySavings: (data.monthlySavings ?? 0) + add })
-          if (s.monthsToFIRE !== null && s.fireAge !== null) {
+          if (s.monthsToFIRE !== null && s.fireAge !== null && s.fireAge < FIRE_AGE_LIMIT) {
             options.push({
               label: `月の貯蓄額を${add / 10000}万円増やす`,
               detail: `月${Math.round(((data.monthlySavings ?? 0) + add) / 10000)}万円の貯蓄で達成`,
@@ -327,7 +329,7 @@ export default function ResultPage() {
           for (const ratio of [0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.6, 0.5]) {
             const reduced = Math.round(data.fireMonthlyExpenses * ratio)
             const s = runSimulation({ ...data, fireMonthlyExpenses: reduced })
-            if (s.monthsToFIRE !== null && s.fireAge !== null) {
+            if (s.monthsToFIRE !== null && s.fireAge !== null && s.fireAge < FIRE_AGE_LIMIT) {
               const cut = Math.round((data.fireMonthlyExpenses - reduced) / 10000)
               options.push({
                 label: `生活費を月${cut}万円削減する`,
@@ -342,7 +344,7 @@ export default function ResultPage() {
         // 3. リーンFIREに変更（既にリーンでなければ）
         if (data.fireCourse !== 'lean') {
           const s = runSimulation({ ...data, fireCourse: 'lean' })
-          if (s.monthsToFIRE !== null && s.fireAge !== null) {
+          if (s.monthsToFIRE !== null && s.fireAge !== null && s.fireAge < FIRE_AGE_LIMIT) {
             options.push({
               label: 'リーンFIREコースに切り替える',
               detail: '取り崩し率4.0%（25倍）で必要資産を減らす',

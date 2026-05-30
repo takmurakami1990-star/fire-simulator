@@ -144,7 +144,10 @@ export function runSimulation(d: SimulatorData): SimulationResult {
       currentAssets = currentAssets * (1 + monthlyYield) + effectiveSavings
 
       if (currentAssets >= requiredAssets && monthsToFIRE === null) {
-        monthsToFIRE = m + 1
+        const impliedAge = currentAge + Math.floor((m + 1) / 12)
+        if (impliedAge < 65) {
+          monthsToFIRE = m + 1
+        }
       }
     } else {
       // 取崩しフェーズ
