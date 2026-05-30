@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSimulator } from '@/contexts/SimulatorContext'
+import { COURSE_LABELS, COURSE_PRESET_EXPENSES } from '@/types/simulator'
 
 function toManYen(yen: number | null): string {
   if (yen === null || yen === 0) return ''
@@ -21,6 +22,8 @@ export default function ExpensesPage() {
 
   const [currentExp, setCurrentExp] = useState(toManYen(data.currentMonthlyExpenses))
   const [fireExp, setFireExp] = useState(toManYen(data.fireMonthlyExpenses))
+  const isPreset = data.fireCourse !== null &&
+    data.fireMonthlyExpenses === COURSE_PRESET_EXPENSES[data.fireCourse]
   const [sameAsNow, setSameAsNow] = useState(
     data.fireMonthlyExpenses !== null &&
     data.currentMonthlyExpenses !== null &&
@@ -77,7 +80,14 @@ export default function ExpensesPage() {
 
         <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-700">FIRE後の月々の生活費</span>
+            <div>
+              <span className="text-sm font-medium text-gray-700">FIRE後の月々の生活費</span>
+              {isPreset && data.fireCourse && (
+                <span className="ml-2 text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                  {COURSE_LABELS[data.fireCourse]}の目安から設定
+                </span>
+              )}
+            </div>
             <label className="flex items-center gap-2 text-sm text-gray-500 cursor-pointer">
               <input
                 type="checkbox"

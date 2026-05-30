@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useSimulator } from '@/contexts/SimulatorContext'
-import { FireCourse, COURSE_LABELS, COURSE_MULTIPLIERS } from '@/types/simulator'
+import { FireCourse, COURSE_LABELS, COURSE_MULTIPLIERS, COURSE_PRESET_EXPENSES } from '@/types/simulator'
 
 const COURSE_ICONS: Record<FireCourse, string> = {
   lean: '🌿',
@@ -39,7 +39,7 @@ export default function CoursePage() {
   const { data, updateData } = useSimulator()
 
   const handleSelect = (course: FireCourse) => {
-    updateData({ fireCourse: course })
+    updateData({ fireCourse: course, fireMonthlyExpenses: COURSE_PRESET_EXPENSES[course] })
   }
 
   return (
@@ -80,7 +80,13 @@ export default function CoursePage() {
                     )}
                   </div>
                   <div className="text-sm text-gray-700 mt-1 font-medium">{COURSE_PHILOSOPHY[course]}</div>
-                  <div className="text-xs text-gray-400 mt-1">{COURSE_DETAIL[course]}</div>
+                  <div className="flex items-center gap-3 mt-1.5">
+                    <span className="text-xs text-gray-400">{COURSE_DETAIL[course]}</span>
+                  </div>
+                  <div className="mt-2 inline-flex items-center gap-1 bg-gray-100 rounded-lg px-2.5 py-1">
+                    <span className="text-xs text-gray-500">生活費の目安</span>
+                    <span className="text-sm font-bold text-gray-800">月{COURSE_PRESET_EXPENSES[course] / 10000}万円</span>
+                  </div>
                 </div>
               </div>
             </button>

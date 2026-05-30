@@ -89,6 +89,13 @@ export const COURSE_EXPENSE_GUIDE: Record<FireCourse, string> = {
   side: '月12〜20万円（労働収入で一部を補う水準）',
 }
 
+export const COURSE_PRESET_EXPENSES: Record<FireCourse, number> = {
+  lean: 150000,
+  normal: 220000,
+  fat: 300000,
+  side: 150000,
+}
+
 export interface SimulationResult {
   requiredAssets: number
   monthsToFIRE: number | null
