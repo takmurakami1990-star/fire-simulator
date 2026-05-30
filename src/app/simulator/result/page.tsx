@@ -28,7 +28,7 @@ function MonteCarloChart({
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
 
   const W = 500; const H = 180
-  const PL = 8; const PR = 8; const PT = 22; const PB = 24
+  const PL = 52; const PR = 8; const PT = 22; const PB = 24
   const cW = W - PL - PR; const cH = H - PT - PB
   const SAMPLE = 2
   const medianS = monte.median.filter((_, i) => i % SAMPLE === 0)
@@ -41,6 +41,19 @@ function MonteCarloChart({
   const yOf = (v: number) => PT + cH - Math.min(Math.max(v, 0) / maxA, 1) * cH
   const zeroY = yOf(0)
   const startY = yOf(requiredAssets)
+
+  // キリのいい縦軸目盛りを2〜3本生成
+  const yTicks: number[] = (() => {
+    const rawStep = maxA / 4
+    const mag = Math.pow(10, Math.floor(Math.log10(rawStep)))
+    const norm = rawStep / mag
+    const step = norm <= 1 ? mag : norm <= 2 ? 2 * mag : norm <= 5 ? 5 * mag : 10 * mag
+    const ticks: number[] = []
+    for (let v = step; v < maxA * 0.93; v += step) {
+      ticks.push(Math.round(v / 10000) * 10000) // 万円単位に丸める
+    }
+    return ticks
+  })()
 
   const upperPts = upper25S.map((v, i) => `${xOf(i)},${yOf(v)}`)
   const lowerPts = lower25S.map((v, i) => `${xOf(i)},${yOf(v)}`)
@@ -84,15 +97,30 @@ function MonteCarloChart({
         onPointerMove={handlePointer}
         onPointerLeave={() => setHoverIdx(null)}
       >
-        {/* 開始点ラベル */}
-        <text x={PL + 3} y={startY - 5} fontSize="9" fill="#6b7280">
-          開始: {formatMan(requiredAssets)}
+        {/* 縦軸グリッド線 + ラベル */}
+        {yTicks.map(v => {
+          const y = yOf(v)
+          const man = Math.round(v / 10000)
+          const label = man >= 10000 ? `${Math.floor(man / 10000)}億` : `${man.toLocaleString()}万`
+          return (
+            <g key={v}>
+              <line x1={PL} y1={y} x2={W - PR} y2={y}
+                stroke="#e5e7eb" strokeWidth="1" strokeDasharray="3,3" />
+              <text x={PL - 4} y={y + 3} fontSize="9" fill="#9ca3af" textAnchor="end">
+                {label}
+              </text>
+            </g>
+          )
+        })}
+        {/* 開始点ラベル（縦軸左側） */}
+        <text x={PL - 4} y={startY + 3} fontSize="9" fill="#6b7280" textAnchor="end">
+          {formatMan(requiredAssets)}
         </text>
         {/* 資産ゼロライン */}
         <line x1={PL} y1={zeroY} x2={W - PR} y2={zeroY}
           stroke="#ef4444" strokeWidth="1.5" opacity="0.7" />
-        <text x={PL + 3} y={zeroY - 4} fontSize="9" fill="#ef4444">
-          資産ゼロ（枯渇）
+        <text x={PL - 4} y={zeroY + 3} fontSize="9" fill="#ef4444" textAnchor="end">
+          0
         </text>
         {/* バンド */}
         {bandPath && <path d={bandPath} fill="#fbbf24" fillOpacity="0.3" />}
