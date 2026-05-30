@@ -211,15 +211,25 @@ function ProgressRing({ rate }: { rate: number }) {
   )
 }
 
+interface ScenarioResult {
+  label: string
+  description: string
+  rate: number
+  fireAge: number | null
+  delta: number
+}
+
 export default function ResultPage() {
   const router = useRouter()
   const { data } = useSimulator()
   const [result, setResult] = useState<SimulationResult | null>(null)
   const [monte, setMonte] = useState<MonteCarloResult | null>(null)
+  const [scenarios, setScenarios] = useState<ScenarioResult[] | null>(null)
   const [isCalculating, setIsCalculating] = useState(true)
 
   const calculate = useCallback(() => {
     setIsCalculating(true)
+    setScenarios(null)
     const sim = runSimulation(data)
     setResult(sim)
 
@@ -227,6 +237,43 @@ export default function ResultPage() {
       setTimeout(() => {
         const mc = runMonteCarlo(data, 1000)
         setMonte(mc)
+
+        // 改善シナリオ試算
+        const configs: { label: string; description: string; d: typeof data }[] = []
+
+        if (data.fireMonthlyExpenses) {
+          const reduced = Math.round(data.fireMonthlyExpenses * 0.9)
+          configs.push({
+            label: '月の生活費を10%削減',
+            description: `月${Math.round(reduced / 10000)}万円に抑えた場合`,
+            d: { ...data, fireMonthlyExpenses: reduced },
+          })
+        }
+
+        if (data.simulateUntilAge > 85) {
+          configs.push({
+            label: '想定寿命を85歳に変更',
+            description: '85歳までで計算した場合',
+            d: { ...data, simulateUntilAge: 85 },
+          })
+        }
+
+        configs.push({
+          label: '月5万円の副収入を追加',
+          description: '副業・パートなどで月5万円を補う場合',
+          d: { ...data, sideFIREIncome: (data.sideFIREIncome ?? 0) + 50000 },
+        })
+
+        const scenarioResults: ScenarioResult[] = configs.map(c => {
+          const s = runSimulation(c.d)
+          if (s.monthsToFIRE === null) {
+            return { label: c.label, description: c.description, rate: 0, fireAge: null, delta: -mc.successRate }
+          }
+          const sm = runMonteCarlo(c.d, 1000)
+          return { label: c.label, description: c.description, rate: sm.successRate, fireAge: s.fireAge, delta: sm.successRate - mc.successRate }
+        }).sort((a, b) => b.delta - a.delta)
+        setScenarios(scenarioResults)
+
         setIsCalculating(false)
       }, 50)
     } else {
@@ -333,6 +380,41 @@ export default function ResultPage() {
               </p>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* 改善シナリオ */}
+      {canFIRE && scenarios !== null && (
+        <div className="bg-white rounded-2xl border border-gray-200 p-5">
+          <div className="font-medium text-gray-800 mb-0.5">成功率を上げるには？</div>
+          <p className="text-xs text-gray-400 mb-4">条件を変えた場合の成功率シミュレーション</p>
+          <div className="divide-y divide-gray-100">
+            {scenarios.map(s => (
+              <div key={s.label} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-gray-800">{s.label}</div>
+                  <div className="text-xs text-gray-400">{s.description}</div>
+                  {s.fireAge !== null && s.fireAge !== result?.fireAge && (
+                    <div className="text-xs text-emerald-600 mt-0.5">FIRE時期: {s.fireAge}歳</div>
+                  )}
+                </div>
+                <div className="text-right shrink-0">
+                  <div className={`text-xl font-bold ${s.rate >= 90 ? 'text-emerald-600' : s.rate >= 70 ? 'text-amber-600' : 'text-red-500'}`}>
+                    {Math.round(s.rate)}%
+                  </div>
+                  <div className={`text-xs font-semibold ${s.delta >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                    {s.delta >= 0 ? '+' : ''}{Math.round(s.delta)}%
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => router.push('/simulator/conditions')}
+            className="mt-4 w-full border border-emerald-300 text-emerald-700 py-3 rounded-xl text-sm font-medium hover:bg-emerald-50 transition-colors"
+          >
+            条件を変えて再計算する
+          </button>
         </div>
       )}
 
