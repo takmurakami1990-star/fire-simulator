@@ -34,6 +34,7 @@ export default function ConditionsPage() {
   const [monthlyChildcare, setMonthlyChildcare] = useState(toMan(data.monthlyChildcare))
   const [sideFIREIncome, setSideFIREIncome] = useState(toMan(data.sideFIREIncome))
   const [simulateUntilAge, setSimulateUntilAge] = useState(String(data.simulateUntilAge ?? 90))
+  const [showAdvanced, setShowAdvanced] = useState(false)
 
   const isSideFIRE = data.fireCourse === 'side'
   const canProceed =
@@ -70,10 +71,10 @@ export default function ConditionsPage() {
         <p className="text-gray-500 mt-1 text-sm">あなたの状況に合わせて調整してください</p>
       </div>
 
-      {/* 基本情報 */}
+      {/* 基本設定 */}
       <section className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
         <div className="px-4 py-3">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">基本情報</h2>
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">基本設定</h2>
         </div>
 
         <div className="px-4 py-3 flex items-center gap-3">
@@ -107,19 +108,12 @@ export default function ConditionsPage() {
           />
           <span className="text-xs text-gray-500 w-12">万円/月</span>
         </div>
-      </section>
-
-      {/* 運用設定 */}
-      <section className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
-        <div className="px-4 py-3">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">運用設定</h2>
-        </div>
 
         <div className="px-4 py-3">
           <div className="flex items-center gap-3 mb-2">
             <div className="flex-1">
               <div className="text-sm font-medium text-gray-800">期待リターン（年率）</div>
-              <div className="text-xs text-gray-400">運用商品の長期平均リターンを入力</div>
+              <div className="text-xs text-gray-400">運用商品の長期平均リターン</div>
             </div>
             <input
               type="number"
@@ -157,48 +151,7 @@ export default function ConditionsPage() {
 
         <div className="px-4 py-3 flex items-center gap-3">
           <div className="flex-1">
-            <div className="text-sm font-medium text-gray-800">インフレ率（年率）</div>
-            <div className="text-xs text-gray-400">日本の目標は2%</div>
-          </div>
-          <input
-            type="number"
-            inputMode="decimal"
-            value={inflationRate}
-            onChange={e => setInflationRate(e.target.value)}
-            step="0.5"
-            min="0"
-            max="10"
-            className="w-16 border border-gray-300 rounded-lg px-2 py-2 text-right text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-          <span className="text-xs text-gray-500 w-4">%</span>
-        </div>
-        <div className="px-4 py-3 flex items-center gap-3">
-          <div className="flex-1">
-            <div className="text-sm font-medium text-gray-800">想定寿命</div>
-            <div className="text-xs text-gray-400">FIRE後のシミュレーション終了年齢</div>
-          </div>
-          <input
-            type="number"
-            inputMode="numeric"
-            value={simulateUntilAge}
-            onChange={e => setSimulateUntilAge(e.target.value)}
-            min="70"
-            max="120"
-            className="w-16 border border-gray-300 rounded-lg px-2 py-2 text-right text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-          <span className="text-xs text-gray-500 w-6">歳</span>
-        </div>
-      </section>
-
-      {/* 年金 */}
-      <section className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
-        <div className="px-4 py-3">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">年金</h2>
-        </div>
-
-        <div className="px-4 py-3 flex items-center gap-3">
-          <div className="flex-1">
-            <div className="text-sm font-medium text-gray-800">受給予定額（月）</div>
+            <div className="text-sm font-medium text-gray-800">年金受給予定額（月）</div>
             <div className="text-xs text-gray-400">ねんきん定期便を参照。0でもOK</div>
           </div>
           <input
@@ -212,132 +165,193 @@ export default function ConditionsPage() {
           />
           <span className="text-xs text-gray-500 w-12">万円/月</span>
         </div>
-
-        <div className="px-4 py-3 flex items-center gap-3">
-          <label className="flex-1 text-sm font-medium text-gray-800">受給開始年齢</label>
-          <input
-            type="number"
-            inputMode="numeric"
-            value={pensionStartAge}
-            onChange={e => setPensionStartAge(e.target.value)}
-            min="60"
-            max="75"
-            className="w-16 border border-gray-300 rounded-lg px-2 py-2 text-right text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-          <span className="text-xs text-gray-500 w-6">歳</span>
-        </div>
       </section>
 
-      {/* サイドFIRE収入 */}
-      {isSideFIRE && (
-        <section className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
-          <div className="px-4 py-3">
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">サイドFIRE収入</h2>
-          </div>
-          <div className="px-4 py-3 flex items-center gap-3">
-            <div className="flex-1">
-              <div className="text-sm font-medium text-gray-800">月々の労働収入</div>
-              <div className="text-xs text-gray-400">FIRE後に得る予定の収入</div>
+      {/* 詳細設定トグル */}
+      <button
+        type="button"
+        onClick={() => setShowAdvanced(v => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 rounded-2xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-100 transition-colors"
+      >
+        <span className="font-medium">詳細設定（インフレ率・子ども・副収入など）</span>
+        <span className="text-gray-400 text-lg leading-none">{showAdvanced ? '▲' : '▼'}</span>
+      </button>
+
+      {showAdvanced && (
+        <div className="space-y-4">
+
+          {/* 運用設定 */}
+          <section className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
+            <div className="px-4 py-3">
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">運用設定</h2>
             </div>
-            <input
-              type="number"
-              inputMode="decimal"
-              value={sideFIREIncome}
-              onChange={e => setSideFIREIncome(e.target.value)}
-              placeholder="5"
-              min="0"
-              className="w-20 border border-gray-300 rounded-lg px-2 py-2 text-right text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-            <span className="text-xs text-gray-500 w-12">万円/月</span>
-          </div>
-        </section>
-      )}
-
-      {/* 子ども */}
-      <section className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
-        <div className="px-4 py-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">子ども</h2>
-          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={hasChildren}
-              onChange={e => setHasChildren(e.target.checked)}
-              className="w-4 h-4 accent-emerald-600"
-            />
-            いる
-          </label>
-        </div>
-
-        {hasChildren && (
-          <>
-            <div className="px-4 py-3 flex items-center gap-3">
-              <label className="flex-1 text-sm font-medium text-gray-800">子どもの人数</label>
-              <input
-                type="number"
-                inputMode="numeric"
-                value={childrenCount}
-                onChange={e => setChildrenCount(e.target.value)}
-                min="1"
-                max="10"
-                className="w-16 border border-gray-300 rounded-lg px-2 py-2 text-right text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-              <span className="text-xs text-gray-500 w-6">人</span>
-            </div>
-
             <div className="px-4 py-3 flex items-center gap-3">
               <div className="flex-1">
-                <div className="text-sm font-medium text-gray-800">末子の現在の年齢</div>
-                <div className="text-xs text-gray-400">一番下の子の年齢</div>
-              </div>
-              <input
-                type="number"
-                inputMode="numeric"
-                value={youngestChildAge}
-                onChange={e => setYoungestChildAge(e.target.value)}
-                placeholder="5"
-                min="0"
-                max="21"
-                className="w-16 border border-gray-300 rounded-lg px-2 py-2 text-right text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-              <span className="text-xs text-gray-500 w-6">歳</span>
-            </div>
-
-            <div className="px-4 py-3 flex items-center gap-3">
-              <div className="flex-1">
-                <div className="text-sm font-medium text-gray-800">子ども独立年齢</div>
-                <div className="text-xs text-gray-400">何歳で独立とみなすか</div>
-              </div>
-              <input
-                type="number"
-                inputMode="numeric"
-                value={childIndependenceAge}
-                onChange={e => setChildIndependenceAge(e.target.value)}
-                min="18"
-                max="30"
-                className="w-16 border border-gray-300 rounded-lg px-2 py-2 text-right text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-              <span className="text-xs text-gray-500 w-6">歳</span>
-            </div>
-
-            <div className="px-4 py-3 flex items-center gap-3">
-              <div className="flex-1">
-                <div className="text-sm font-medium text-gray-800">月々の子育て費用</div>
-                <div className="text-xs text-gray-400">教育費・習い事など</div>
+                <div className="text-sm font-medium text-gray-800">インフレ率（年率）</div>
+                <div className="text-xs text-gray-400">日本の目標は2%</div>
               </div>
               <input
                 type="number"
                 inputMode="decimal"
-                value={monthlyChildcare}
-                onChange={e => setMonthlyChildcare(e.target.value)}
-                placeholder="5"
+                value={inflationRate}
+                onChange={e => setInflationRate(e.target.value)}
+                step="0.5"
                 min="0"
-                className="w-20 border border-gray-300 rounded-lg px-2 py-2 text-right text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                max="10"
+                className="w-16 border border-gray-300 rounded-lg px-2 py-2 text-right text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
-              <span className="text-xs text-gray-500 w-12">万円/月</span>
+              <span className="text-xs text-gray-500 w-4">%</span>
             </div>
-          </>
-        )}
-      </section>
+            <div className="px-4 py-3 flex items-center gap-3">
+              <div className="flex-1">
+                <div className="text-sm font-medium text-gray-800">想定寿命</div>
+                <div className="text-xs text-gray-400">シミュレーション終了年齢</div>
+              </div>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={simulateUntilAge}
+                onChange={e => setSimulateUntilAge(e.target.value)}
+                min="70"
+                max="120"
+                className="w-16 border border-gray-300 rounded-lg px-2 py-2 text-right text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <span className="text-xs text-gray-500 w-6">歳</span>
+            </div>
+          </section>
+
+          {/* 年金詳細 */}
+          <section className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
+            <div className="px-4 py-3">
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">年金（詳細）</h2>
+            </div>
+            <div className="px-4 py-3 flex items-center gap-3">
+              <label className="flex-1 text-sm font-medium text-gray-800">受給開始年齢</label>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={pensionStartAge}
+                onChange={e => setPensionStartAge(e.target.value)}
+                min="60"
+                max="75"
+                className="w-16 border border-gray-300 rounded-lg px-2 py-2 text-right text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <span className="text-xs text-gray-500 w-6">歳</span>
+            </div>
+          </section>
+
+          {/* サイドFIRE収入 */}
+          {isSideFIRE && (
+            <section className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
+              <div className="px-4 py-3">
+                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">サイドFIRE収入</h2>
+              </div>
+              <div className="px-4 py-3 flex items-center gap-3">
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-gray-800">月々の労働収入</div>
+                  <div className="text-xs text-gray-400">FIRE後に得る予定の収入</div>
+                </div>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  value={sideFIREIncome}
+                  onChange={e => setSideFIREIncome(e.target.value)}
+                  placeholder="5"
+                  min="0"
+                  className="w-20 border border-gray-300 rounded-lg px-2 py-2 text-right text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                <span className="text-xs text-gray-500 w-12">万円/月</span>
+              </div>
+            </section>
+          )}
+
+          {/* 子ども */}
+          <section className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
+            <div className="px-4 py-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">子ども</h2>
+              <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={hasChildren}
+                  onChange={e => setHasChildren(e.target.checked)}
+                  className="w-4 h-4 accent-emerald-600"
+                />
+                いる
+              </label>
+            </div>
+
+            {hasChildren && (
+              <>
+                <div className="px-4 py-3 flex items-center gap-3">
+                  <label className="flex-1 text-sm font-medium text-gray-800">子どもの人数</label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={childrenCount}
+                    onChange={e => setChildrenCount(e.target.value)}
+                    min="1"
+                    max="10"
+                    className="w-16 border border-gray-300 rounded-lg px-2 py-2 text-right text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <span className="text-xs text-gray-500 w-6">人</span>
+                </div>
+
+                <div className="px-4 py-3 flex items-center gap-3">
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-gray-800">末子の現在の年齢</div>
+                    <div className="text-xs text-gray-400">一番下の子の年齢</div>
+                  </div>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={youngestChildAge}
+                    onChange={e => setYoungestChildAge(e.target.value)}
+                    placeholder="5"
+                    min="0"
+                    max="21"
+                    className="w-16 border border-gray-300 rounded-lg px-2 py-2 text-right text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <span className="text-xs text-gray-500 w-6">歳</span>
+                </div>
+
+                <div className="px-4 py-3 flex items-center gap-3">
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-gray-800">子ども独立年齢</div>
+                    <div className="text-xs text-gray-400">何歳で独立とみなすか</div>
+                  </div>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={childIndependenceAge}
+                    onChange={e => setChildIndependenceAge(e.target.value)}
+                    min="18"
+                    max="30"
+                    className="w-16 border border-gray-300 rounded-lg px-2 py-2 text-right text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <span className="text-xs text-gray-500 w-6">歳</span>
+                </div>
+
+                <div className="px-4 py-3 flex items-center gap-3">
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-gray-800">月々の子育て費用</div>
+                    <div className="text-xs text-gray-400">教育費・習い事など</div>
+                  </div>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    value={monthlyChildcare}
+                    onChange={e => setMonthlyChildcare(e.target.value)}
+                    placeholder="5"
+                    min="0"
+                    className="w-20 border border-gray-300 rounded-lg px-2 py-2 text-right text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <span className="text-xs text-gray-500 w-12">万円/月</span>
+                </div>
+              </>
+            )}
+          </section>
+        </div>
+      )}
 
       <div className="flex gap-3">
         <button
