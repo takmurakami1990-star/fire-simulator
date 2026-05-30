@@ -433,16 +433,17 @@ export default function ResultPage() {
       ) : (
         <>
           <div className="bg-amber-50 rounded-2xl border border-amber-200 p-5">
-            <div className="text-sm font-medium text-amber-700 mb-1">FIRE達成</div>
             {actualReachAge !== null ? (
               <>
-                <div className="text-lg font-bold text-amber-700">65歳未満でのFIRE達成は難しい状況です</div>
+                <div className="text-sm font-medium text-amber-700 mb-1">FIRE達成時期</div>
+                <div className="text-lg font-bold text-amber-700">早期FIRE（65歳未満）は難しい状況です</div>
                 <p className="text-xs text-amber-600 mt-2">
                   現在の条件では{actualReachAge}歳で目標額に到達しますが、早期退職（65歳未満）の条件を満たしていません。
                 </p>
               </>
             ) : (
               <>
+                <div className="text-sm font-medium text-amber-700 mb-1">試算結果</div>
                 <div className="text-lg font-bold text-amber-700">50年間積み立てても目標額に届きません</div>
                 <div className="mt-3 space-y-1.5">
                   <div className="flex justify-between text-sm">
