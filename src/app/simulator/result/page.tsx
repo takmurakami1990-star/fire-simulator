@@ -225,6 +225,125 @@ interface FixOption {
   fireAge: number
 }
 
+async function generateShareImage({
+  requiredAssets, fireAge, canFIRE, successRate, simulateUntilAge,
+}: {
+  requiredAssets: number
+  fireAge: number | null
+  canFIRE: boolean
+  successRate: number | null
+  simulateUntilAge: number
+}): Promise<Blob> {
+  const W = 800, H = 440
+  const canvas = document.createElement('canvas')
+  canvas.width = W
+  canvas.height = H
+  const ctx = canvas.getContext('2d')!
+
+  // 背景
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, W, H)
+
+  // 上部エメラルドバー
+  const barGrad = ctx.createLinearGradient(0, 0, W, 0)
+  barGrad.addColorStop(0, '#059669')
+  barGrad.addColorStop(1, '#10b981')
+  ctx.fillStyle = barGrad
+  ctx.fillRect(0, 0, W, 10)
+
+  // 左アクセントライン
+  ctx.fillStyle = '#059669'
+  ctx.fillRect(0, 10, 5, H - 10)
+
+  // アプリ名
+  ctx.font = 'bold 28px sans-serif'
+  ctx.fillStyle = '#059669'
+  ctx.fillText('FIRE シミュレーター', 48, 72)
+
+  // サブタイトル
+  ctx.font = '18px sans-serif'
+  ctx.fillStyle = '#6b7280'
+  ctx.fillText('あなたのFIREプラン', 48, 104)
+
+  // 仕切り線
+  ctx.strokeStyle = '#e5e7eb'
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  ctx.moveTo(48, 124)
+  ctx.lineTo(W - 48, 124)
+  ctx.stroke()
+
+  // 必要資産ラベル
+  ctx.font = '15px sans-serif'
+  ctx.fillStyle = '#6b7280'
+  ctx.fillText('必要資産（目標額）', 48, 164)
+
+  // 必要資産金額
+  ctx.font = 'bold 52px sans-serif'
+  ctx.fillStyle = '#111827'
+  ctx.fillText(formatMan(requiredAssets), 48, 228)
+
+  // 縦の仕切り
+  ctx.strokeStyle = '#e5e7eb'
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  ctx.moveTo(420, 144)
+  ctx.lineTo(420, 260)
+  ctx.stroke()
+
+  // FIRE達成時期ラベル
+  ctx.font = '15px sans-serif'
+  ctx.fillStyle = '#6b7280'
+  ctx.fillText('FIRE達成時期', 448, 164)
+
+  // FIRE達成時期の値
+  if (canFIRE && fireAge !== null) {
+    ctx.font = 'bold 52px sans-serif'
+    ctx.fillStyle = '#059669'
+    ctx.fillText(`${fireAge}歳`, 448, 228)
+  } else {
+    ctx.font = 'bold 28px sans-serif'
+    ctx.fillStyle = '#d97706'
+    ctx.fillText('条件を', 448, 204)
+    ctx.fillText('見直し中', 448, 240)
+  }
+
+  // 仕切り線
+  ctx.strokeStyle = '#e5e7eb'
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  ctx.moveTo(48, 278)
+  ctx.lineTo(W - 48, 278)
+  ctx.stroke()
+
+  // 成功確率
+  if (successRate !== null) {
+    ctx.font = '15px sans-serif'
+    ctx.fillStyle = '#6b7280'
+    ctx.fillText(`${simulateUntilAge}歳まで資産が持続する確率`, 48, 314)
+
+    const rate = Math.round(successRate)
+    const rateColor = rate >= 90 ? '#059669' : rate >= 70 ? '#d97706' : '#ef4444'
+    ctx.font = 'bold 64px sans-serif'
+    ctx.fillStyle = rateColor
+    ctx.fillText(`${rate}%`, 48, 388)
+
+    const rateLabel = rate >= 90 ? '安全性が高い計画です' : rate >= 70 ? '概ね安全、改善の余地あり' : '資産枯渇リスクが高めです'
+    ctx.font = '16px sans-serif'
+    ctx.fillStyle = rateColor
+    ctx.fillText(rateLabel, 200, 380)
+  }
+
+  // 下部グレー帯
+  ctx.fillStyle = '#f9fafb'
+  ctx.fillRect(0, H - 36, W, 36)
+  ctx.font = '13px sans-serif'
+  ctx.fillStyle = '#9ca3af'
+  ctx.fillText('※ 本シミュレーションは参考値です。投資助言ではありません。', 48, H - 12)
+
+  return new Promise(resolve => canvas.toBlob(blob => resolve(blob!), 'image/png'))
+}
+
 export default function ResultPage() {
   const router = useRouter()
   const { data, resetData } = useSimulator()
@@ -234,7 +353,7 @@ export default function ResultPage() {
   const [fixOptions, setFixOptions] = useState<FixOption[] | null>(null)
   const [isCalculating, setIsCalculating] = useState(true)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
-  const [shareStatus, setShareStatus] = useState<'idle' | 'copied'>('idle')
+  const [shareStatus, setShareStatus] = useState<'idle' | 'sharing' | 'done'>('idle')
 
   const calculate = useCallback(() => {
     setIsCalculating(true)
@@ -587,25 +706,37 @@ export default function ResultPage() {
             コースを変えて比較
           </button>
           <button
+            disabled={shareStatus === 'sharing'}
             onClick={async () => {
-              const text = [
-                `FIREシミュレーション結果`,
-                `必要資産: ${formatMan(result.requiredAssets)}`,
-                canFIRE && result.fireAge ? `FIRE達成: ${result.fireAge}歳` : 'FIRE達成: 条件を見直し中',
-                successRate !== null ? `成功率: ${Math.round(successRate)}%` : null,
-              ].filter(Boolean).join('\n')
-
-              if (navigator.share) {
-                await navigator.share({ title: 'FIREシミュレーション結果', text })
-              } else {
-                await navigator.clipboard.writeText(text)
-                setShareStatus('copied')
+              setShareStatus('sharing')
+              try {
+                const blob = await generateShareImage({
+                  requiredAssets: result.requiredAssets,
+                  fireAge: result.fireAge,
+                  canFIRE,
+                  successRate,
+                  simulateUntilAge: data.simulateUntilAge ?? 90,
+                })
+                const file = new File([blob], 'fire-plan.png', { type: 'image/png' })
+                if (navigator.share && navigator.canShare?.({ files: [file] })) {
+                  await navigator.share({ files: [file], title: 'FIREシミュレーション結果' })
+                } else {
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement('a')
+                  a.href = url
+                  a.download = 'fire-plan.png'
+                  a.click()
+                  URL.revokeObjectURL(url)
+                }
+                setShareStatus('done')
                 setTimeout(() => setShareStatus('idle'), 2000)
+              } catch {
+                setShareStatus('idle')
               }
             }}
-            className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-2xl text-sm font-medium hover:bg-gray-50 transition-colors"
+            className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-2xl text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
-            {shareStatus === 'copied' ? 'コピーしました' : '結果をシェア'}
+            {shareStatus === 'sharing' ? '生成中...' : shareStatus === 'done' ? '完了' : '結果をシェア'}
           </button>
         </div>
 
