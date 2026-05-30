@@ -384,7 +384,7 @@ export default function ResultPage() {
   const maxAssets = result.monthlyData[result.monthlyData.length - 1]?.assets ?? 0
   const firstReachIdx = result.monthlyData.findIndex(d => d.assets >= result.requiredAssets)
   const actualReachAge = firstReachIdx >= 0
-    ? (data.currentAge ?? 0) + Math.floor(firstReachIdx / 12)
+    ? (data.currentAge ?? 0) + Math.floor((firstReachIdx + 1) / 12)
     : null
 
   return (
