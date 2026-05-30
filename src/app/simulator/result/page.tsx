@@ -117,10 +117,6 @@ function MonteCarloChart({
             </g>
           )
         })}
-        {/* 開始点ラベル（縦軸左側） */}
-        <text x={PL - 4} y={startY + 3} fontSize="9" fill="#6b7280" textAnchor="end">
-          {formatMan(requiredAssets)}
-        </text>
         {/* 資産ゼロライン */}
         <line x1={PL} y1={zeroY} x2={W - PR} y2={zeroY}
           stroke="#ef4444" strokeWidth="1.5" opacity="0.7" />
