@@ -227,12 +227,14 @@ interface FixOption {
 
 export default function ResultPage() {
   const router = useRouter()
-  const { data } = useSimulator()
+  const { data, resetData } = useSimulator()
   const [result, setResult] = useState<SimulationResult | null>(null)
   const [monte, setMonte] = useState<MonteCarloResult | null>(null)
   const [scenarios, setScenarios] = useState<ScenarioResult[] | null>(null)
   const [fixOptions, setFixOptions] = useState<FixOption[] | null>(null)
   const [isCalculating, setIsCalculating] = useState(true)
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
+  const [shareStatus, setShareStatus] = useState<'idle' | 'copied'>('idle')
 
   const calculate = useCallback(() => {
     setIsCalculating(true)
@@ -483,12 +485,6 @@ export default function ResultPage() {
                   </div>
                 ))}
               </div>
-              <button
-                onClick={() => router.push('/simulator/conditions')}
-                className="mt-4 w-full border border-emerald-300 text-emerald-700 py-3 rounded-xl text-sm font-medium hover:bg-emerald-50 transition-colors"
-              >
-                条件を変えて再計算する
-              </button>
             </div>
           )}
 
@@ -561,12 +557,6 @@ export default function ResultPage() {
               </div>
             ))}
           </div>
-          <button
-            onClick={() => router.push('/simulator/conditions')}
-            className="mt-4 w-full border border-emerald-300 text-emerald-700 py-3 rounded-xl text-sm font-medium hover:bg-emerald-50 transition-colors"
-          >
-            条件を変えて再計算する
-          </button>
         </div>
       )}
 
@@ -585,16 +575,66 @@ export default function ResultPage() {
       <div className="space-y-3">
         <button
           onClick={() => router.push('/simulator/conditions')}
-          className="w-full border border-gray-300 text-gray-700 py-4 rounded-2xl font-medium hover:bg-gray-50 transition-colors"
+          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-2xl font-semibold transition-colors"
         >
-          条件を変えて再計算
+          条件を変えて再計算する
         </button>
-        <button
-          onClick={() => router.push('/simulator/course')}
-          className="w-full border border-emerald-300 text-emerald-700 py-3 rounded-2xl font-medium hover:bg-emerald-50 transition-colors text-sm"
-        >
-          FIREコースを変えて比較する
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => router.push('/simulator/course')}
+            className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-2xl text-sm font-medium hover:bg-gray-50 transition-colors"
+          >
+            コースを変えて比較
+          </button>
+          <button
+            onClick={async () => {
+              const text = [
+                `FIREシミュレーション結果`,
+                `必要資産: ${formatMan(result.requiredAssets)}`,
+                canFIRE && result.fireAge ? `FIRE達成: ${result.fireAge}歳` : 'FIRE達成: 条件を見直し中',
+                successRate !== null ? `成功率: ${Math.round(successRate)}%` : null,
+              ].filter(Boolean).join('\n')
+
+              if (navigator.share) {
+                await navigator.share({ title: 'FIREシミュレーション結果', text })
+              } else {
+                await navigator.clipboard.writeText(text)
+                setShareStatus('copied')
+                setTimeout(() => setShareStatus('idle'), 2000)
+              }
+            }}
+            className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-2xl text-sm font-medium hover:bg-gray-50 transition-colors"
+          >
+            {shareStatus === 'copied' ? 'コピーしました' : '結果をシェア'}
+          </button>
+        </div>
+
+        {!showResetConfirm ? (
+          <button
+            onClick={() => setShowResetConfirm(true)}
+            className="w-full text-gray-400 py-2 text-sm hover:text-gray-600 transition-colors"
+          >
+            最初からやり直す
+          </button>
+        ) : (
+          <div className="border border-red-200 bg-red-50 rounded-2xl p-4 space-y-3">
+            <p className="text-sm text-red-700 font-medium text-center">入力データがすべてリセットされます。よろしいですか？</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className="flex-1 border border-gray-300 text-gray-600 py-2 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={() => { resetData(); router.push('/simulator/course') }}
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 rounded-xl text-sm font-semibold transition-colors"
+              >
+                リセットする
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <p className="text-xs text-gray-400 text-center">
