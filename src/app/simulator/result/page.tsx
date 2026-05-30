@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSimulator } from '@/contexts/SimulatorContext'
-import { runSimulation, runMonteCarlo } from '@/lib/simulation'
+import { runSimulation, runMonteCarlo, runMonteCarloFromFire } from '@/lib/simulation'
 import { SimulationResult, MonteCarloResult, COURSE_LABELS } from '@/types/simulator'
 
 function formatMan(yen: number): string {
@@ -239,40 +239,76 @@ export default function ResultPage() {
         setMonte(mc)
 
         // 改善シナリオ試算
-        const configs: { label: string; description: string; d: typeof data }[] = []
+        const scenarioResults: ScenarioResult[] = []
 
+        // 1. 生活費10%削減
         if (data.fireMonthlyExpenses) {
           const reduced = Math.round(data.fireMonthlyExpenses * 0.9)
-          configs.push({
-            label: '月の生活費を10%削減',
-            description: `月${Math.round(reduced / 10000)}万円に抑えた場合`,
-            d: { ...data, fireMonthlyExpenses: reduced },
-          })
-        }
-
-        if (data.simulateUntilAge > 85) {
-          configs.push({
-            label: '想定寿命を85歳に変更',
-            description: '85歳までで計算した場合',
-            d: { ...data, simulateUntilAge: 85 },
-          })
-        }
-
-        configs.push({
-          label: '月5万円の副収入を追加',
-          description: '副業・パートなどで月5万円を補う場合',
-          d: { ...data, sideFIREIncome: (data.sideFIREIncome ?? 0) + 50000 },
-        })
-
-        const scenarioResults: ScenarioResult[] = configs.map(c => {
-          const s = runSimulation(c.d)
-          if (s.monthsToFIRE === null) {
-            return { label: c.label, description: c.description, rate: 0, fireAge: null, delta: -mc.successRate }
+          const sd = { ...data, fireMonthlyExpenses: reduced }
+          const ss = runSimulation(sd)
+          if (ss.monthsToFIRE !== null) {
+            const sm = runMonteCarlo(sd, 1000)
+            scenarioResults.push({
+              label: '月の生活費を10%削減',
+              description: `月${Math.round(reduced / 10000)}万円に抑えた場合`,
+              rate: sm.successRate,
+              fireAge: ss.fireAge,
+              delta: sm.successRate - mc.successRate,
+            })
           }
-          const sm = runMonteCarlo(c.d, 1000)
-          return { label: c.label, description: c.description, rate: sm.successRate, fireAge: s.fireAge, delta: sm.successRate - mc.successRate }
-        }).sort((a, b) => b.delta - a.delta)
-        setScenarios(scenarioResults)
+        }
+
+        // 2. FIREを2年遅らせる
+        if (sim.fireAge !== null && sim.fireAge + 2 < data.simulateUntilAge) {
+          const monthlyYield = (data.expectedYield / 100) / 12
+          let delayedAssets = sim.requiredAssets
+          for (let m = 0; m < 24; m++) {
+            delayedAssets = delayedAssets * (1 + monthlyYield) + (data.monthlySavings ?? 0)
+          }
+          const delayedFireAge = sim.fireAge + 2
+          const dm = runMonteCarloFromFire(data, delayedAssets, delayedFireAge, 1000)
+          scenarioResults.push({
+            label: 'FIREを2年遅らせる',
+            description: `${delayedFireAge}歳でFIREし、より多くの資産を持ってスタート`,
+            rate: dm.successRate,
+            fireAge: delayedFireAge,
+            delta: dm.successRate - mc.successRate,
+          })
+        }
+
+        // 3. 月5万円の副収入を追加
+        {
+          const sd = { ...data, sideFIREIncome: (data.sideFIREIncome ?? 0) + 50000 }
+          const ss = runSimulation(sd)
+          if (ss.monthsToFIRE !== null) {
+            const sm = runMonteCarlo(sd, 1000)
+            scenarioResults.push({
+              label: '月5万円の副収入を追加',
+              description: '副業・パートなどで月5万円を補う場合',
+              rate: sm.successRate,
+              fireAge: ss.fireAge,
+              delta: sm.successRate - mc.successRate,
+            })
+          }
+        }
+
+        // 4. 年金受給を70歳に繰り下げ（設定済みかつ65歳以下の場合のみ）
+        if ((data.pensionMonthly ?? 0) > 0 && data.pensionStartAge <= 65) {
+          const sd = { ...data, pensionMonthly: Math.round(data.pensionMonthly * 1.42), pensionStartAge: 70 }
+          const ss = runSimulation(sd)
+          if (ss.monthsToFIRE !== null) {
+            const sm = runMonteCarlo(sd, 1000)
+            scenarioResults.push({
+              label: '年金受給を70歳に繰り下げる',
+              description: `月${Math.round(data.pensionMonthly * 1.42 / 10000)}万円（42%増）で70歳から受給`,
+              rate: sm.successRate,
+              fireAge: ss.fireAge,
+              delta: sm.successRate - mc.successRate,
+            })
+          }
+        }
+
+        setScenarios(scenarioResults.sort((a, b) => b.delta - a.delta).slice(0, 3))
 
         setIsCalculating(false)
       }, 50)

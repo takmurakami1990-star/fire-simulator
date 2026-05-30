@@ -150,6 +150,78 @@ export function runSimulation(d: SimulatorData): SimulationResult {
   }
 }
 
+// 任意のFIRE時点（資産・年齢）からMCを開始する（シナリオ試算用）
+export function runMonteCarloFromFire(
+  d: SimulatorData,
+  startingAssets: number,
+  fireAge: number,
+  runs = 1000
+): MonteCarloResult {
+  const {
+    expectedYield, inflationRate, pensionMonthly, pensionStartAge,
+    hasChildren, youngestChildAge, childIndependenceAge, monthlyChildcare,
+    sideFIREIncome, fireMonthlyExpenses, simulateUntilAge, currentAge,
+  } = d
+
+  if (!fireMonthlyExpenses) return { successRate: 0, median: [], upper25: [], lower25: [] }
+
+  const annualYield = expectedYield / 100
+  const annualStd = stdDevForYield(expectedYield)
+  const monthlyStdDev = annualStd / Math.sqrt(12)
+  const monthlyInflation = (inflationRate / 100) / 12
+
+  const untilAge = simulateUntilAge ?? 90
+  const SIMULATE_MONTHS = Math.max(12, (untilAge - fireAge) * 12)
+  const pensionStartMonthOffset = pensionStartAge > fireAge ? (pensionStartAge - fireAge) * 12 : 0
+  const monthsToThisFire = (fireAge - (currentAge ?? 0)) * 12
+
+  const allPaths: number[][] = []
+  let successCount = 0
+
+  for (let r = 0; r < runs; r++) {
+    let assets_val = startingAssets
+    const path: number[] = [assets_val]
+    let ruined = false
+
+    for (let m = 0; m < SIMULATE_MONTHS; m++) {
+      const monthlyReturn = randNorm(annualYield / 12, monthlyStdDev)
+      const currentPension = m >= pensionStartMonthOffset ? (pensionMonthly ?? 0) : 0
+      const sideIncome = sideFIREIncome ?? 0
+      const inflatedExpenses = fireMonthlyExpenses * Math.pow(1 + monthlyInflation, m)
+
+      let childcareCost = 0
+      if (hasChildren && youngestChildAge !== null && monthlyChildcare) {
+        const childAge = (youngestChildAge ?? 0) + monthsToThisFire / 12 + m / 12
+        if (childAge < (childIndependenceAge ?? 22)) childcareCost = monthlyChildcare
+      }
+
+      const realWithdrawal = Math.max(0, inflatedExpenses + childcareCost - currentPension - sideIncome)
+      assets_val = assets_val * (1 + monthlyReturn) - realWithdrawal
+
+      if (assets_val <= 0) { assets_val = 0; ruined = true }
+      path.push(Math.max(0, assets_val))
+    }
+
+    if (!ruined) successCount++
+    allPaths.push(path)
+  }
+
+  const successRate = (successCount / runs) * 100
+  const pathLength = SIMULATE_MONTHS + 1
+  const median: number[] = []
+  const upper25: number[] = []
+  const lower25: number[] = []
+
+  for (let m = 0; m < pathLength; m++) {
+    const values = allPaths.map(p => p[m]).sort((a, b) => a - b)
+    median.push(values[Math.floor(runs * 0.5)])
+    upper25.push(values[Math.floor(runs * 0.75)])
+    lower25.push(values[Math.floor(runs * 0.25)])
+  }
+
+  return { successRate, median, upper25, lower25 }
+}
+
 export function runMonteCarlo(d: SimulatorData, runs = 1000): MonteCarloResult {
   const {
     fireCourse,
