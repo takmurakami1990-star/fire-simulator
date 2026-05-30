@@ -167,6 +167,7 @@ export function runMonteCarlo(d: SimulatorData, runs = 1000): MonteCarloResult {
     childIndependenceAge,
     monthlyChildcare,
     sideFIREIncome,
+    simulateUntilAge,
   } = d
 
   if (!fireCourse || !fireMonthlyExpenses || !currentAge || monthlySavings === null) {
@@ -187,7 +188,9 @@ export function runMonteCarlo(d: SimulatorData, runs = 1000): MonteCarloResult {
   const monthlyStdDev = annualStd / Math.sqrt(12)
   const monthlyInflation = (inflationRate / 100) / 12
 
-  const SIMULATE_MONTHS = 360 // FIRE後30年をシミュレート
+  const fireAge = currentAge + Math.floor((baseResult.monthsToFIRE ?? 0) / 12)
+  const untilAge = simulateUntilAge ?? 90
+  const SIMULATE_MONTHS = Math.max(12, (untilAge - fireAge) * 12)
   const pensionStartMonthOffset = pensionStartAge > currentAge
     ? (pensionStartAge - currentAge) * 12
     : 0

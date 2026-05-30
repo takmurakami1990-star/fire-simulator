@@ -17,12 +17,13 @@ function formatMan(yen: number): string {
 }
 
 function MonteCarloChart({
-  fireAge, requiredAssets, fireMonthlyExpenses, monte,
+  fireAge, requiredAssets, fireMonthlyExpenses, monte, simulateUntilAge,
 }: {
   fireAge: number
   requiredAssets: number
   fireMonthlyExpenses: number
   monte: MonteCarloResult
+  simulateUntilAge: number
 }) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
@@ -66,7 +67,7 @@ function MonteCarloChart({
   const medianPts = medianS.map((v, i) => `${xOf(i)},${yOf(v)}`).join(' ')
 
   const labelAges: number[] = []
-  for (let age = Math.ceil(fireAge / 5) * 5; age <= fireAge + 30; age += 5) {
+  for (let age = Math.ceil(fireAge / 5) * 5; age <= simulateUntilAge; age += 5) {
     labelAges.push(age)
   }
 
@@ -91,7 +92,7 @@ function MonteCarloChart({
     <div className="bg-white rounded-2xl border border-gray-200 p-5">
       <div className="font-medium text-gray-800 mb-0.5">FIRE後の資産シミュレーション</div>
       <p className="text-xs text-gray-400 mb-3">
-        {fireAge}歳・{formatMan(requiredAssets)}からスタートして月{Math.round(fireMonthlyExpenses / 10000)}万円を取り崩した場合の30年間の推移（1,000通りのシナリオ）
+        {fireAge}歳・{formatMan(requiredAssets)}からスタートして月{Math.round(fireMonthlyExpenses / 10000)}万円を取り崩した場合の{simulateUntilAge}歳までの推移（1,000通りのシナリオ）
       </p>
       <svg
         ref={svgRef}
@@ -310,9 +311,9 @@ export default function ResultPage() {
       {/* モンテカルロ成功率 */}
       {canFIRE && monte !== null && (
         <div className="bg-white rounded-2xl border border-gray-200 p-5">
-          <div className="text-sm font-medium text-gray-500 mb-1">その後30年間、資産は持つか？</div>
+          <div className="text-sm font-medium text-gray-500 mb-1">{data.simulateUntilAge}歳まで資産は持つか？</div>
           <p className="text-xs text-gray-400 mb-3">
-            {result.fireAge}歳でFIREし、{(result.fireAge ?? 0) + 30}歳まで月{data.fireMonthlyExpenses ? Math.round(data.fireMonthlyExpenses / 10000) : 0}万円を取り崩した場合の資産継続確率（1,000パターンでシミュレーション）
+            {result.fireAge}歳でFIREし、{data.simulateUntilAge}歳まで月{data.fireMonthlyExpenses ? Math.round(data.fireMonthlyExpenses / 10000) : 0}万円を取り崩した場合の資産継続確率（1,000パターンでシミュレーション）
           </p>
           <div className="flex items-center gap-6">
             <div className="relative">
@@ -328,7 +329,7 @@ export default function ResultPage() {
                     '資産枯渇リスクが高めです'}
               </div>
               <p className="text-gray-400 text-xs">
-                1,000回中{Math.round((successRate ?? 0) * 10)}回は{(result.fireAge ?? 0) + 30}歳時点で資産が残るシナリオ
+                1,000回中{Math.round((successRate ?? 0) * 10)}回は{data.simulateUntilAge}歳時点で資産が残るシナリオ
               </p>
             </div>
           </div>
@@ -342,6 +343,7 @@ export default function ResultPage() {
           requiredAssets={result.requiredAssets}
           fireMonthlyExpenses={data.fireMonthlyExpenses ?? 0}
           monte={monte}
+          simulateUntilAge={data.simulateUntilAge}
         />
       )}
 

@@ -34,6 +34,7 @@ export interface SimulatorData {
   monthlyChildcare: number | null
   taxSocialInsurance: number
   sideFIREIncome: number | null
+  simulateUntilAge: number
 }
 
 export const defaultSimulatorData: SimulatorData = {
@@ -64,6 +65,7 @@ export const defaultSimulatorData: SimulatorData = {
   monthlyChildcare: null,
   taxSocialInsurance: 20000,
   sideFIREIncome: null,
+  simulateUntilAge: 90,
 }
 
 export const COURSE_LABELS: Record<FireCourse, string> = {

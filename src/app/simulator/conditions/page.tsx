@@ -33,6 +33,7 @@ export default function ConditionsPage() {
   const [childIndependenceAge, setChildIndependenceAge] = useState(String(data.childIndependenceAge))
   const [monthlyChildcare, setMonthlyChildcare] = useState(toMan(data.monthlyChildcare))
   const [sideFIREIncome, setSideFIREIncome] = useState(toMan(data.sideFIREIncome))
+  const [simulateUntilAge, setSimulateUntilAge] = useState(String(data.simulateUntilAge ?? 90))
 
   const isSideFIRE = data.fireCourse === 'side'
   const canProceed =
@@ -57,6 +58,7 @@ export default function ConditionsPage() {
       childIndependenceAge: parseInt(childIndependenceAge) || 22,
       monthlyChildcare: hasChildren ? fromMan(monthlyChildcare) : null,
       sideFIREIncome: isSideFIRE ? fromMan(sideFIREIncome) : null,
+      simulateUntilAge: parseInt(simulateUntilAge) || 90,
     })
     router.push('/simulator/result')
   }
@@ -147,6 +149,22 @@ export default function ConditionsPage() {
             className="w-16 border border-gray-300 rounded-lg px-2 py-2 text-right text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
           <span className="text-xs text-gray-500 w-4">%</span>
+        </div>
+        <div className="px-4 py-3 flex items-center gap-3">
+          <div className="flex-1">
+            <div className="text-sm font-medium text-gray-800">想定寿命</div>
+            <div className="text-xs text-gray-400">FIRE後のシミュレーション終了年齢</div>
+          </div>
+          <input
+            type="number"
+            inputMode="numeric"
+            value={simulateUntilAge}
+            onChange={e => setSimulateUntilAge(e.target.value)}
+            min="70"
+            max="120"
+            className="w-16 border border-gray-300 rounded-lg px-2 py-2 text-right text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+          <span className="text-xs text-gray-500 w-6">歳</span>
         </div>
       </section>
 
